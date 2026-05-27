@@ -209,7 +209,7 @@ export default function Produtos() {
                   {/* Ações */}
                   <div className="flex gap-2 pt-1">
                     <button
-                      onClick={() => navigate("/calculadora")}
+                      onClick={() => navigate(`/calculadora?id=${produto.id}`)}
                       className="flex-1 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium transition"
                     >
                       Editar

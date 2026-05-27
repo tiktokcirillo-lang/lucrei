@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { doc, getDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { useSearchParams } from "react-router-dom";
+import { doc, getDoc, collection, addDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "../contexts/AuthContext";
 import { db } from "../lib/firebase";
 import {
@@ -94,6 +95,8 @@ function ReadonlyRow({ label, value, highlight }) {
 
 export default function Calculadora() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const editId = searchParams.get("id");
   const [companyData, setCompanyData] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -123,6 +126,15 @@ export default function Calculadora() {
       if (snap.exists()) setCompanyData(snap.data().company);
     });
   }, [user]);
+
+  useEffect(() => {
+    if (!user || !editId) return;
+    getDoc(doc(db, "users", user.uid, "products", editId)).then((snap) => {
+      if (!snap.exists()) return;
+      const inputs = snap.data().inputs;
+      if (inputs) setForm(inputs);
+    });
+  }, [user, editId]);
 
   const taxRegime = companyData?.taxRegime || "unknown";
   const defaultTaxRate = TAX_RATES[taxRegime] ?? 0.10;
@@ -186,28 +198,38 @@ export default function Calculadora() {
         ]
       : [];
 
+  const resultPayload = {
+    precoMinimo,
+    precoSugerido,
+    margemReal,
+    markup,
+    margemContribuicao,
+    pontoEquilibrio,
+    cmv,
+    custoVariavelR,
+    custoFixoUnidade,
+    ctu,
+    taxRatePct: taxRate * 100,
+  };
+
   async function handleSave() {
     if (!precoSugerido) return;
     setSaving(true);
     try {
-      await addDoc(collection(db, "users", user.uid, "products"), {
-        name: form.productName.trim() || "Produto sem nome",
-        inputs: { ...form },
-        results: {
-          precoMinimo,
-          precoSugerido,
-          margemReal,
-          markup,
-          margemContribuicao,
-          pontoEquilibrio,
-          cmv,
-          custoVariavelR,
-          custoFixoUnidade,
-          ctu,
-          taxRatePct: taxRate * 100,
-        },
-        createdAt: serverTimestamp(),
-      });
+      if (editId) {
+        await updateDoc(doc(db, "users", user.uid, "products", editId), {
+          name: form.productName.trim() || "Produto sem nome",
+          inputs: { ...form },
+          results: resultPayload,
+        });
+      } else {
+        await addDoc(collection(db, "users", user.uid, "products"), {
+          name: form.productName.trim() || "Produto sem nome",
+          inputs: { ...form },
+          results: resultPayload,
+          createdAt: serverTimestamp(),
+        });
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
@@ -220,9 +242,11 @@ export default function Calculadora() {
   return (
     <div className="min-h-screen bg-gray-950 p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-2xl font-bold text-white mb-1">Calculadora de Precificação</h1>
+        <h1 className="text-2xl font-bold text-white mb-1">
+          {editId ? "Editar Produto" : "Calculadora de Precificação"}
+        </h1>
         <p className="text-gray-400 text-sm mb-8">
-          Preencha os campos e veja o preço ideal em tempo real
+          {editId ? "Atualize os dados do produto e salve as alterações" : "Preencha os campos e veja o preço ideal em tempo real"}
         </p>
 
         <div className="flex flex-col lg:flex-row gap-6 items-start">
@@ -463,7 +487,11 @@ export default function Calculadora() {
                 disabled={saving || precoSugerido == null}
                 className="w-full mt-6 py-3 rounded-xl bg-green-500 hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold transition text-sm"
               >
-                {saving ? "Salvando..." : saved ? "Produto salvo!" : "Salvar Produto"}
+                {saving
+                  ? "Salvando..."
+                  : saved
+                  ? editId ? "Produto atualizado com sucesso!" : "Produto salvo!"
+                  : editId ? "Salvar Alterações" : "Salvar Produto"}
               </button>
             </div>
           </div>
