@@ -96,7 +96,8 @@ function ReadonlyRow({ label, value, highlight }) {
 export default function Calculadora() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
-  const editId = searchParams.get("id");
+  const [editMode, setEditMode] = useState(false);
+  const [editId, setEditId] = useState(null);
   const [companyData, setCompanyData] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -128,13 +129,17 @@ export default function Calculadora() {
   }, [user]);
 
   useEffect(() => {
-    if (!user || !editId) return;
-    getDoc(doc(db, "users", user.uid, "products", editId)).then((snap) => {
+    if (!user) return;
+    const id = searchParams.get("id");
+    if (!id) return;
+    getDoc(doc(db, "users", user.uid, "products", id)).then((snap) => {
       if (!snap.exists()) return;
       const inputs = snap.data().inputs;
       if (inputs) setForm(inputs);
+      setEditMode(true);
+      setEditId(id);
     });
-  }, [user, editId]);
+  }, [user]);
 
   const taxRegime = companyData?.taxRegime || "unknown";
   const defaultTaxRate = TAX_RATES[taxRegime] ?? 0.10;
@@ -216,7 +221,7 @@ export default function Calculadora() {
     if (!precoSugerido) return;
     setSaving(true);
     try {
-      if (editId) {
+      if (editMode) {
         await updateDoc(doc(db, "users", user.uid, "products", editId), {
           name: form.productName.trim() || "Produto sem nome",
           inputs: { ...form },
@@ -243,10 +248,10 @@ export default function Calculadora() {
     <div className="min-h-screen bg-gray-950 p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-2xl font-bold text-white mb-1">
-          {editId ? "Editar Produto" : "Calculadora de Precificação"}
+          {editMode ? "Editar Produto" : "Calculadora de Precificação"}
         </h1>
         <p className="text-gray-400 text-sm mb-8">
-          {editId ? "Atualize os dados do produto e salve as alterações" : "Preencha os campos e veja o preço ideal em tempo real"}
+          {editMode ? "Atualize os dados do produto e salve as alterações" : "Preencha os campos e veja o preço ideal em tempo real"}
         </p>
 
         <div className="flex flex-col lg:flex-row gap-6 items-start">
@@ -490,8 +495,8 @@ export default function Calculadora() {
                 {saving
                   ? "Salvando..."
                   : saved
-                  ? editId ? "Produto atualizado com sucesso!" : "Produto salvo!"
-                  : editId ? "Salvar Alterações" : "Salvar Produto"}
+                  ? editMode ? "Produto atualizado!" : "Produto salvo!"
+                  : editMode ? "Salvar Alterações" : "Salvar Produto"}
               </button>
             </div>
           </div>
