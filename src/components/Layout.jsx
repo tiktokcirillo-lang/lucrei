@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { icon: "📦", label: "Produtos", path: "/produtos" },
   { icon: "📊", label: "DRE", path: "/dre" },
   { icon: "🎯", label: "Simulador", path: "/simulador" },
+  { icon: "📋", label: "Relatórios", path: "/relatorios" },
   { icon: "🎓", label: "Academia", path: "/academia" },
 ];
 
