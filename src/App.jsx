@@ -11,6 +11,7 @@ import DRE from "./pages/DRE";
 import Simulador from "./pages/Simulador";
 import Relatorios from "./pages/Relatorios";
 import Academia from "./pages/Academia";
+import Configuracoes from "./pages/Configuracoes";
 
 function Placeholder({ label }) {
   return (
@@ -45,6 +46,7 @@ export default function App() {
             <Route path="/simulador" element={<Simulador />} />
             <Route path="/relatorios" element={<Relatorios />} />
             <Route path="/academia" element={<Academia />} />
+            <Route path="/configuracoes" element={<Configuracoes />} />
           </Route>
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>

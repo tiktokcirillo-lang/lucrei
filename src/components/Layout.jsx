@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { icon: "🎯", label: "Simulador", path: "/simulador" },
   { icon: "📋", label: "Relatórios", path: "/relatorios" },
   { icon: "🎓", label: "Academia", path: "/academia" },
+  { icon: "⚙️", label: "Configurações", path: "/configuracoes" },
 ];
 
 function NavItem({ item, compact }) {
