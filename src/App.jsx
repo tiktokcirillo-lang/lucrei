@@ -7,6 +7,7 @@ import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import Calculadora from "./pages/Calculadora";
 import Produtos from "./pages/Produtos";
+import DRE from "./pages/DRE";
 
 function Placeholder({ label }) {
   return (
@@ -37,7 +38,7 @@ export default function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/calculadora" element={<Calculadora />} />
             <Route path="/produtos" element={<Produtos />} />
-            <Route path="/dre" element={<Placeholder label="DRE" />} />
+            <Route path="/dre" element={<DRE />} />
             <Route path="/simulador" element={<Placeholder label="Simulador" />} />
             <Route path="/academia" element={<Placeholder label="Academia" />} />
           </Route>
