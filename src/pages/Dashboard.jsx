@@ -207,11 +207,7 @@ export default function Dashboard() {
                   itemStyle={{ color: "#f3f4f6" }}
                   cursor={{ fill: "rgba(255,255,255,0.04)" }}
                 />
-                <Bar dataKey="margem" radius={[4, 4, 0, 0]}>
-                  {chartData.map((entry, i) => (
-                    <Cell key={i} fill={CLASS_COLORS[entry.cls]} />
-                  ))}
-                </Bar>
+                <Bar dataKey="margem" radius={[4, 4, 0, 0]} fill="#22c55e" />
               </BarChart>
             </ResponsiveContainer>
           </div>
