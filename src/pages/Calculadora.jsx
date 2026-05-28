@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import { doc, getDoc, collection, addDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, collection, addDoc, updateDoc, onSnapshot, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "../contexts/AuthContext";
 import { db } from "../lib/firebase";
 import {
@@ -93,6 +93,189 @@ function ReadonlyRow({ label, value, highlight }) {
   );
 }
 
+function FichaTecnicaModal({ productName, user, onClose, onApply }) {
+  const [ingredients, setIngredients] = useState([]);
+  const [rendimento, setRendimento] = useState("1");
+  const [recipeItems, setRecipeItems] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    return onSnapshot(
+      collection(db, "users", user.uid, "ingredients"),
+      (snap) => setIngredients(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    );
+  }, [user]);
+
+  function addItem(ing) {
+    setRecipeItems((prev) => [
+      ...prev,
+      {
+        _key: Date.now() + Math.random(),
+        name: ing.name,
+        baseUnit: ing.baseUnit,
+        costPerBaseUnit: ing.costPerBaseUnit,
+        qty: "",
+      },
+    ]);
+    setShowDropdown(false);
+  }
+
+  function removeItem(key) {
+    setRecipeItems((prev) => prev.filter((i) => i._key !== key));
+  }
+
+  const totalCMV = recipeItems.reduce(
+    (sum, item) => sum + (parseFloat(item.qty) || 0) * (item.costPerBaseUnit || 0),
+    0
+  );
+  const rend = parseFloat(rendimento) || 1;
+  const cmvPerUnit = rend > 0 ? totalCMV / rend : 0;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+      <div className="bg-gray-900 rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
+        <div className="p-5 border-b border-gray-800 flex items-center justify-between">
+          <h2 className="text-white font-bold text-base truncate pr-3">
+            🧪 Ficha Técnica{productName ? ` — ${productName}` : ""}
+          </h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white text-xl leading-none transition flex-shrink-0">
+            ✕
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
+          <div>
+            <label className="block text-sm text-gray-400 mb-1.5">
+              Essa receita rende quantas unidades?
+            </label>
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={rendimento}
+              onChange={(e) => setRendimento(e.target.value)}
+              className="w-full bg-gray-800 text-white rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-green-500 text-sm"
+              placeholder="Ex: 10"
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-gray-400">Ingredientes da receita</span>
+              <div className="relative">
+                <button
+                  onClick={() => setShowDropdown((d) => !d)}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 font-medium transition"
+                >
+                  + Adicionar
+                </button>
+                {showDropdown && (
+                  <>
+                    <div className="fixed inset-0 z-0" onClick={() => setShowDropdown(false)} />
+                    <div className="absolute right-0 top-full mt-1 w-64 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl z-10 max-h-48 overflow-y-auto">
+                      {ingredients.length === 0 ? (
+                        <p className="text-gray-400 text-sm p-4 text-center">
+                          Nenhum ingrediente cadastrado
+                        </p>
+                      ) : (
+                        ingredients.map((ing) => (
+                          <button
+                            key={ing.id}
+                            onClick={() => addItem(ing)}
+                            className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 hover:text-white flex items-center justify-between transition"
+                          >
+                            <span className="truncate">{ing.name}</span>
+                            <span className="text-xs text-gray-500 ml-2 flex-shrink-0">
+                              {ing.baseUnit}
+                            </span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {recipeItems.length === 0 ? (
+              <div className="bg-gray-800 rounded-xl p-6 text-center text-gray-500 text-sm">
+                Nenhum ingrediente adicionado à receita
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {recipeItems.map((item) => {
+                  const itemCost = (parseFloat(item.qty) || 0) * (item.costPerBaseUnit || 0);
+                  return (
+                    <div key={item._key} className="bg-gray-800 rounded-xl p-3.5 flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white text-sm font-medium mb-2 truncate">{item.name}</p>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            step="any"
+                            value={item.qty}
+                            onChange={(e) =>
+                              setRecipeItems((prev) =>
+                                prev.map((i) =>
+                                  i._key === item._key ? { ...i, qty: e.target.value } : i
+                                )
+                              )
+                            }
+                            className="w-24 bg-gray-700 text-white text-sm rounded-lg px-3 py-1.5 outline-none focus:ring-1 focus:ring-green-500"
+                            placeholder="Qtd"
+                          />
+                          <span className="text-gray-400 text-xs">{item.baseUnit}</span>
+                          <span className="ml-auto text-green-400 text-sm font-semibold">
+                            {itemCost > 0 ? currency(itemCost) : "—"}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => removeItem(item._key)}
+                        className="text-gray-500 hover:text-red-400 transition p-1 flex-shrink-0"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="p-5 border-t border-gray-800">
+          <div className="flex items-center justify-between mb-2 px-1">
+            <span className="text-sm text-gray-400">CMV total da receita</span>
+            <span className="text-sm text-white font-semibold">{currency(totalCMV)}</span>
+          </div>
+          <div className="flex items-center justify-between bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 mb-4">
+            <span className="text-sm text-green-400 font-medium">CMV por unidade</span>
+            <span className="text-xl font-bold text-green-400">{currency(cmvPerUnit)}</span>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 py-2.5 rounded-xl bg-gray-800 text-gray-300 text-sm font-medium hover:bg-gray-700 transition"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() => onApply(cmvPerUnit)}
+              disabled={!cmvPerUnit || cmvPerUnit <= 0}
+              className="flex-1 py-2.5 rounded-xl bg-green-500 hover:bg-green-600 disabled:opacity-40 text-white text-sm font-semibold transition"
+            >
+              Aplicar à Calculadora
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Calculadora() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
@@ -101,6 +284,7 @@ export default function Calculadora() {
   const [companyData, setCompanyData] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [showFichaTecnica, setShowFichaTecnica] = useState(false);
 
   const [form, setForm] = useState({
     productName: "",
@@ -273,6 +457,13 @@ export default function Calculadora() {
               <Field label="Insumos / Ingredientes">
                 <RInput prefix="R$" value={form.insumos} onChange={(v) => setF("insumos", v)} />
               </Field>
+              <button
+                type="button"
+                onClick={() => setShowFichaTecnica(true)}
+                className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 font-medium transition w-fit"
+              >
+                🧪 Montar Ficha Técnica
+              </button>
               <Field label="Embalagem">
                 <RInput prefix="R$" value={form.embalagem} onChange={(v) => setF("embalagem", v)} />
               </Field>
@@ -502,6 +693,18 @@ export default function Calculadora() {
           </div>
         </div>
       </div>
+
+      {showFichaTecnica && (
+        <FichaTecnicaModal
+          productName={form.productName}
+          user={user}
+          onClose={() => setShowFichaTecnica(false)}
+          onApply={(cmvPerUnit) => {
+            setF("insumos", cmvPerUnit.toFixed(4));
+            setShowFichaTecnica(false);
+          }}
+        />
+      )}
     </div>
   );
 }

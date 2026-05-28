@@ -14,6 +14,7 @@ const Simulador = lazy(() => import("./pages/Simulador"));
 const Relatorios = lazy(() => import("./pages/Relatorios"));
 const Academia = lazy(() => import("./pages/Academia"));
 const Configuracoes = lazy(() => import("./pages/Configuracoes"));
+const Ingredientes = lazy(() => import("./pages/Ingredientes"));
 
 const Fallback = (
   <div className="min-h-screen bg-gray-950 flex items-center justify-center">
@@ -48,6 +49,7 @@ export default function App() {
               <Route path="/relatorios" element={<Relatorios />} />
               <Route path="/academia" element={<Academia />} />
               <Route path="/configuracoes" element={<Configuracoes />} />
+              <Route path="/ingredientes" element={<Ingredientes />} />
             </Route>
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
