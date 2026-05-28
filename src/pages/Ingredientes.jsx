@@ -202,27 +202,37 @@ function IngredientModal({ initial, editingId, onClose, onSave }) {
   );
 }
 
+function compressImage(file) {
+  return new Promise((resolve) => {
+    const canvas = document.createElement("canvas");
+    const img = new Image();
+    img.onload = () => {
+      const maxWidth = 1024;
+      const scale = Math.min(1, maxWidth / img.width);
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", 0.8).split(",")[1]);
+    };
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 function ScanModal({ onClose, onImport }) {
   const [imagePreview, setImagePreview] = useState(null);
   const [imageBase64, setImageBase64] = useState(null);
-  const [imageMediaType, setImageMediaType] = useState("image/jpeg");
   const [analyzing, setAnalyzing] = useState(false);
   const [items, setItems] = useState(null);
   const [error, setError] = useState(null);
 
-  function handleFile(e) {
+  async function handleFile(e) {
     const file = e.target.files?.[0];
     if (!file) return;
     setItems(null);
     setError(null);
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const result = ev.target.result;
-      setImagePreview(result);
-      setImageBase64(result.split(",")[1]);
-      setImageMediaType(file.type || "image/jpeg");
-    };
-    reader.readAsDataURL(file);
+    setImagePreview(URL.createObjectURL(file));
+    const compressed = await compressImage(file);
+    setImageBase64(compressed);
   }
 
   async function analyze() {
@@ -249,7 +259,7 @@ function ScanModal({ onClose, onImport }) {
                   type: "image",
                   source: {
                     type: "base64",
-                    media_type: imageMediaType,
+                    media_type: "image/jpeg",
                     data: imageBase64,
                   },
                 },
@@ -262,6 +272,11 @@ function ScanModal({ onClose, onImport }) {
           ],
         }),
       });
+      if (!res.ok) {
+        const errBody = await res.json();
+        console.error("Anthropic API error:", errBody);
+        throw new Error(errBody?.error?.message || `HTTP ${res.status}`);
+      }
       const data = await res.json();
       const raw = data.content?.[0]?.text?.trim() || "";
       const jsonStr = raw.startsWith("{")
@@ -270,8 +285,8 @@ function ScanModal({ onClose, onImport }) {
       const parsed = JSON.parse(jsonStr);
       setItems(parsed.items.map((item, i) => ({ ...item, _id: i, _selected: true })));
     } catch (err) {
-      setError("Não foi possível analisar o cupom. Verifique a imagem e tente novamente.");
-      console.error(err);
+      console.error("Scan error:", err);
+      setError(`Erro: ${err.message}`);
     } finally {
       setAnalyzing(false);
     }
@@ -292,6 +307,7 @@ function ScanModal({ onClose, onImport }) {
   }
 
   function resetScan() {
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
     setItems(null);
     setImagePreview(null);
     setImageBase64(null);
@@ -365,10 +381,10 @@ function ScanModal({ onClose, onImport }) {
               {imagePreview && (
                 <button
                   onClick={analyze}
-                  disabled={analyzing}
-                  className="w-full py-3 rounded-xl bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white font-semibold text-sm transition"
+                  disabled={analyzing || !imageBase64}
+                  className="w-full py-3 rounded-xl bg-green-500 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm transition"
                 >
-                  {analyzing ? "Analisando..." : "Analisar Cupom"}
+                  {analyzing ? "Analisando... ⏳" : "Analisar Cupom"}
                 </button>
               )}
               {error && (
