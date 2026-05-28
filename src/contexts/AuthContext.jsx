@@ -1,5 +1,11 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
+import {
+  onAuthStateChanged,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  signOut,
+} from "firebase/auth";
 import { auth, googleProvider, db } from "../lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 
@@ -11,8 +17,13 @@ export function AuthProvider({ children }) {
   const [hasCompany, setHasCompany] = useState(false);
 
   useEffect(() => {
+    getRedirectResult(auth).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        console.log("UID:", firebaseUser.uid);
         setUser(firebaseUser);
         const snap = await getDoc(doc(db, "users", firebaseUser.uid));
         setHasCompany(snap.exists() && !!snap.data()?.company);
@@ -25,7 +36,14 @@ export function AuthProvider({ children }) {
     return unsubscribe;
   }, []);
 
-  const loginWithGoogle = () => signInWithPopup(auth, googleProvider);
+  const loginWithGoogle = () => {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile) {
+      return signInWithRedirect(auth, googleProvider);
+    }
+    return signInWithPopup(auth, googleProvider);
+  };
+
   const logout = () => signOut(auth);
 
   return (

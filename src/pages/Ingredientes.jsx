@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   collection,
   onSnapshot,
@@ -203,7 +203,6 @@ function IngredientModal({ initial, editingId, onClose, onSave }) {
 }
 
 function ScanModal({ onClose, onImport }) {
-  const fileRef = useRef();
   const [imagePreview, setImagePreview] = useState(null);
   const [imageBase64, setImageBase64] = useState(null);
   const [imageMediaType, setImageMediaType] = useState("image/jpeg");
@@ -317,34 +316,52 @@ function ScanModal({ onClose, onImport }) {
         <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
           {!items && (
             <>
-              <div
-                onClick={() => fileRef.current?.click()}
-                className="border-2 border-dashed border-gray-700 rounded-xl p-8 text-center cursor-pointer hover:border-green-500/50 transition"
-              >
-                {imagePreview ? (
-                  <img
-                    src={imagePreview}
-                    alt="preview"
-                    className="max-h-52 mx-auto rounded-lg object-contain"
-                  />
-                ) : (
-                  <div>
-                    <p className="text-5xl mb-3">🧾</p>
-                    <p className="text-gray-400 text-sm font-medium">
-                      Toque para selecionar a foto do cupom
-                    </p>
-                    <p className="text-gray-600 text-xs mt-1">JPEG, PNG — câmera ou arquivo</p>
-                  </div>
-                )}
-              </div>
+              {imagePreview && (
+                <img
+                  src={imagePreview}
+                  alt="preview"
+                  className="max-h-52 mx-auto rounded-xl object-contain"
+                />
+              )}
+
               <input
-                ref={fileRef}
                 type="file"
                 accept="image/*"
                 capture="environment"
                 className="hidden"
+                id="scan-camera-input"
                 onChange={handleFile}
               />
+              <input
+                type="file"
+                accept="image/jpeg,image/png"
+                className="hidden"
+                id="scan-gallery-input"
+                onChange={handleFile}
+              />
+
+              {!imagePreview && (
+                <div className="text-center py-4">
+                  <p className="text-4xl mb-3">🧾</p>
+                  <p className="text-gray-400 text-sm">Selecione a foto do cupom fiscal</p>
+                </div>
+              )}
+
+              <div className="flex gap-3 justify-center">
+                <label
+                  htmlFor="scan-camera-input"
+                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-xl cursor-pointer font-semibold text-sm transition"
+                >
+                  📷 Tirar Foto
+                </label>
+                <label
+                  htmlFor="scan-gallery-input"
+                  className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white px-4 py-3 rounded-xl cursor-pointer font-semibold text-sm transition"
+                >
+                  🖼️ Escolher Arquivo
+                </label>
+              </div>
+
               {imagePreview && (
                 <button
                   onClick={analyze}
