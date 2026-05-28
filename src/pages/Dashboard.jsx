@@ -12,6 +12,12 @@ import {
 } from "recharts";
 import { useAuth } from "../contexts/AuthContext";
 import { CLASS_BADGE, getMarginClass } from "../lib/business/classification";
+import {
+  calculateDashboardStats,
+  generateAlerts,
+  generateChartData,
+  getTopProducts,
+} from "../lib/business/dashboard";
 import { db } from "../lib/firebase";
 
 function currency(v) {
@@ -37,51 +43,10 @@ export default function Dashboard() {
     );
   }, [user]);
 
-  const stats = useMemo(() => {
-    if (!produtos.length) return null;
-    let faturamento = 0;
-    let lucro = 0;
-    let margemTotal = 0;
-
-    for (const p of produtos) {
-      const r = p.results ?? {};
-      const vol = parseFloat(p.inputs?.volumeEstimado) || 0;
-      faturamento += (r.precoSugerido ?? 0) * vol;
-      lucro += (r.margemContribuicao ?? 0) * vol;
-      margemTotal += r.margemReal ?? 0;
-    }
-
-    return {
-      faturamento,
-      lucro,
-      margemMedia: margemTotal / produtos.length,
-      total: produtos.length,
-    };
-  }, [produtos]);
-
-  const alerts = useMemo(() => ({
-    low: produtos.filter((p) => (p.results?.margemReal ?? 0) < 10),
-    noVol: produtos.filter((p) => !parseFloat(p.inputs?.volumeEstimado)),
-  }), [produtos]);
-
-  const chartData = useMemo(() =>
-    [...produtos]
-      .filter((p) => p.results?.margemReal != null)
-      .sort((a, b) => (b.results.margemReal ?? 0) - (a.results.margemReal ?? 0))
-      .map((p) => ({
-        name: (p.name?.length > 13 ? p.name.slice(0, 13) + "…" : p.name) || "—",
-        margem: parseFloat((p.results.margemReal ?? 0).toFixed(1)),
-        cls: getMarginClass(p.results.margemReal ?? 0),
-      })),
-    [produtos]
-  );
-
-  const top5 = useMemo(() =>
-    [...produtos]
-      .sort((a, b) => (b.results?.margemContribuicao ?? 0) - (a.results?.margemContribuicao ?? 0))
-      .slice(0, 5),
-    [produtos]
-  );
+  const stats = useMemo(() => calculateDashboardStats(produtos), [produtos]);
+  const alerts = useMemo(() => generateAlerts(produtos), [produtos]);
+  const chartData = useMemo(() => generateChartData(produtos), [produtos]);
+  const top5 = useMemo(() => getTopProducts(produtos), [produtos]);
 
   if (loading) {
     return (
