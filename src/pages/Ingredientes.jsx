@@ -204,6 +204,8 @@ function IngredientModal({ initial, editingId, onClose, onSave }) {
 }
 
 async function compressImage(file) {
+  console.log("Arquivo recebido:", file.name, file.type, file.size);
+
   let processedFile = file;
 
   const isHeic =
@@ -212,17 +214,28 @@ async function compressImage(file) {
     file.name.toLowerCase().endsWith(".heic") ||
     file.name.toLowerCase().endsWith(".heif");
 
+  console.log("É HEIC?", isHeic);
+
   if (isHeic) {
-    const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.8 });
-    processedFile = Array.isArray(converted) ? converted[0] : converted;
+    try {
+      console.log("Convertendo HEIC...");
+      const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.8 });
+      processedFile = Array.isArray(converted) ? converted[0] : converted;
+      console.log("HEIC convertido:", processedFile.type, processedFile.size);
+    } catch (heicErr) {
+      console.error("Erro na conversão HEIC:", heicErr);
+      throw new Error("Erro ao converter imagem HEIC");
+    }
   }
 
   return new Promise((resolve, reject) => {
     const canvas = document.createElement("canvas");
     const img = new Image();
     const url = URL.createObjectURL(processedFile);
+    console.log("URL criada:", url);
 
     img.onload = () => {
+      console.log("Imagem carregada:", img.width, "x", img.height);
       const maxWidth = 1024;
       const scale = Math.min(1, maxWidth / img.width);
       canvas.width = img.width * scale;
@@ -230,10 +243,13 @@ async function compressImage(file) {
       const ctx = canvas.getContext("2d");
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL("image/jpeg", 0.8).split(",")[1]);
+      const base64 = canvas.toDataURL("image/jpeg", 0.8).split(",")[1];
+      console.log("Base64 gerado, tamanho:", base64.length);
+      resolve(base64);
     };
 
-    img.onerror = () => {
+    img.onerror = (e) => {
+      console.error("Erro ao carregar imagem no canvas:", e);
       URL.revokeObjectURL(url);
       reject(new Error("Não foi possível carregar a imagem"));
     };
