@@ -203,24 +203,35 @@ function IngredientModal({ initial, editingId, onClose, onSave }) {
 }
 
 function compressImage(file) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const canvas = document.createElement("canvas");
     const img = new Image();
+    const url = URL.createObjectURL(file);
+
     img.onload = () => {
       const maxWidth = 1024;
       const scale = Math.min(1, maxWidth / img.width);
       canvas.width = img.width * scale;
       canvas.height = img.height * scale;
-      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
       resolve(canvas.toDataURL("image/jpeg", 0.8).split(",")[1]);
     };
-    img.src = URL.createObjectURL(file);
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Não foi possível carregar a imagem"));
+    };
+
+    img.src = url;
   });
 }
 
 function ScanModal({ onClose, onImport }) {
   const [imagePreview, setImagePreview] = useState(null);
   const [imageBase64, setImageBase64] = useState(null);
+  const [converting, setConverting] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [items, setItems] = useState(null);
   const [error, setError] = useState(null);
@@ -231,8 +242,15 @@ function ScanModal({ onClose, onImport }) {
     setItems(null);
     setError(null);
     setImagePreview(URL.createObjectURL(file));
-    const compressed = await compressImage(file);
-    setImageBase64(compressed);
+    setConverting(true);
+    try {
+      const compressed = await compressImage(file);
+      setImageBase64(compressed);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setConverting(false);
+    }
   }
 
   async function analyze() {
@@ -344,7 +362,7 @@ function ScanModal({ onClose, onImport }) {
 
               <input
                 type="file"
-                accept="image/*"
+                accept="image/*,.heic,.heif"
                 capture="environment"
                 className="hidden"
                 id="scan-camera-input"
@@ -352,7 +370,7 @@ function ScanModal({ onClose, onImport }) {
               />
               <input
                 type="file"
-                accept="image/jpeg,image/png"
+                accept="image/*,.heic,.heif"
                 className="hidden"
                 id="scan-gallery-input"
                 onChange={handleFile}
@@ -383,10 +401,10 @@ function ScanModal({ onClose, onImport }) {
               {imagePreview && (
                 <button
                   onClick={analyze}
-                  disabled={analyzing || !imageBase64}
+                  disabled={converting || analyzing || !imageBase64}
                   className="w-full py-3 rounded-xl bg-green-500 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm transition"
                 >
-                  {analyzing ? "Analisando... ⏳" : "Analisar Cupom"}
+                  {converting ? "Convertendo imagem... ⏳" : analyzing ? "Analisando cupom... ⏳" : "Analisar Cupom"}
                 </button>
               )}
               {error && (
