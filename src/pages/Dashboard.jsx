@@ -8,7 +8,6 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  Cell,
 } from "recharts";
 import { useAuth } from "../contexts/AuthContext";
 import { CLASS_BADGE, getMarginClass } from "../lib/business/classification";
@@ -18,12 +17,8 @@ import {
   generateChartData,
   getTopProducts,
 } from "../lib/business/dashboard";
+import { currency } from "../lib/formatters/currency";
 import { db } from "../lib/firebase";
-
-function currency(v) {
-  if (v == null || !isFinite(v)) return "—";
-  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 export default function Dashboard() {
   const { user } = useAuth();
