@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { collection, onSnapshot } from "firebase/firestore";
+import SummaryCard from "../components/dashboard/SummaryCard";
 import {
   BarChart,
   Bar,
@@ -83,11 +84,7 @@ export default function Dashboard() {
             { label: "Margem Média", value: `${stats.margemMedia.toFixed(1)}%`, icon: "🎯" },
             { label: "Produtos Cadastrados", value: String(stats.total), icon: "📦" },
           ].map(({ label, value, icon }) => (
-            <div key={label} className="bg-gray-900 rounded-2xl p-5">
-              <p className="text-xl mb-2">{icon}</p>
-              <p className="text-2xl font-bold text-white mb-1">{value}</p>
-              <p className="text-xs text-gray-400 leading-snug">{label}</p>
-            </div>
+            <SummaryCard key={label} label={label} value={value} icon={icon} />
           ))}
         </div>
 
