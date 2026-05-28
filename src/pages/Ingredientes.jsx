@@ -240,6 +240,8 @@ function ScanModal({ onClose, onImport }) {
     setAnalyzing(true);
     setError(null);
     try {
+      console.log('API Key existe:', !!import.meta.env.VITE_ANTHROPIC_API_KEY);
+      console.log('Primeiros 10 chars:', import.meta.env.VITE_ANTHROPIC_API_KEY?.substring(0, 10));
       const res = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
