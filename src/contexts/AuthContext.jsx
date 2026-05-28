@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import {
   onAuthStateChanged,
-  signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
   signOut,
@@ -17,7 +16,15 @@ export function AuthProvider({ children }) {
   const [hasCompany, setHasCompany] = useState(false);
 
   useEffect(() => {
-    getRedirectResult(auth).catch(() => {});
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          console.log('Redirect login sucesso:', result.user.uid);
+        }
+      })
+      .catch((error) => {
+        console.error('Redirect error:', error);
+      });
   }, []);
 
   useEffect(() => {
@@ -37,11 +44,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const loginWithGoogle = () => {
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if (isMobile) {
-      return signInWithRedirect(auth, googleProvider);
-    }
-    return signInWithPopup(auth, googleProvider);
+    return signInWithRedirect(auth, googleProvider);
   };
 
   const logout = () => signOut(auth);
