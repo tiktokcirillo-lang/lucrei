@@ -11,25 +11,13 @@ import {
   Cell,
 } from "recharts";
 import { useAuth } from "../contexts/AuthContext";
+import { CLASS_BADGE, getMarginClass } from "../lib/business/classification";
 import { db } from "../lib/firebase";
 
 function currency(v) {
   if (v == null || !isFinite(v)) return "—";
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
-
-function getClass(mr) {
-  if (mr >= 40) return "A";
-  if (mr >= 20) return "B";
-  return "C";
-}
-
-const CLASS_COLORS = { A: "#22c55e", B: "#eab308", C: "#ef4444" };
-const CLASS_BADGE = {
-  A: "bg-green-500/20 text-green-400",
-  B: "bg-yellow-500/20 text-yellow-400",
-  C: "bg-red-500/20 text-red-400",
-};
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -83,7 +71,7 @@ export default function Dashboard() {
       .map((p) => ({
         name: (p.name?.length > 13 ? p.name.slice(0, 13) + "…" : p.name) || "—",
         margem: parseFloat((p.results.margemReal ?? 0).toFixed(1)),
-        cls: getClass(p.results.margemReal ?? 0),
+        cls: getMarginClass(p.results.margemReal ?? 0),
       })),
     [produtos]
   );
@@ -232,7 +220,7 @@ export default function Dashboard() {
                 <tbody className="divide-y divide-gray-800">
                   {top5.map((p) => {
                     const r = p.results ?? {};
-                    const cls = getClass(r.margemReal ?? 0);
+                    const cls = getMarginClass(r.margemReal ?? 0);
                     return (
                       <tr key={p.id}>
                         <td className="py-3 pr-4 text-white font-medium max-w-[140px] truncate">
