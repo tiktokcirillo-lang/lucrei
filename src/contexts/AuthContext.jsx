@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import {
   onAuthStateChanged,
+  signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
   signOut,
@@ -19,12 +20,10 @@ export function AuthProvider({ children }) {
     getRedirectResult(auth)
       .then((result) => {
         if (result?.user) {
-          console.log('Redirect login sucesso:', result.user.uid);
+          setUser(result.user);
         }
       })
-      .catch((error) => {
-        console.error('Redirect error:', error);
-      });
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -43,8 +42,22 @@ export function AuthProvider({ children }) {
     return unsubscribe;
   }, []);
 
-  const loginWithGoogle = () => {
-    return signInWithRedirect(auth, googleProvider);
+  const loginWithGoogle = async () => {
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+    try {
+      if (isIOS || isSafari) {
+        await signInWithRedirect(auth, googleProvider);
+      } else {
+        await signInWithPopup(auth, googleProvider);
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      if (error.code === 'auth/popup-blocked') {
+        await signInWithRedirect(auth, googleProvider);
+      }
+    }
   };
 
   const logout = () => signOut(auth);
