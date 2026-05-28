@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import heic2any from "heic2any";
 import {
   collection,
   onSnapshot,
@@ -202,11 +203,24 @@ function IngredientModal({ initial, editingId, onClose, onSave }) {
   );
 }
 
-function compressImage(file) {
+async function compressImage(file) {
+  let processedFile = file;
+
+  const isHeic =
+    file.type === "image/heic" ||
+    file.type === "image/heif" ||
+    file.name.toLowerCase().endsWith(".heic") ||
+    file.name.toLowerCase().endsWith(".heif");
+
+  if (isHeic) {
+    const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.8 });
+    processedFile = Array.isArray(converted) ? converted[0] : converted;
+  }
+
   return new Promise((resolve, reject) => {
     const canvas = document.createElement("canvas");
     const img = new Image();
-    const url = URL.createObjectURL(file);
+    const url = URL.createObjectURL(processedFile);
 
     img.onload = () => {
       const maxWidth = 1024;
