@@ -46,7 +46,18 @@ export function AuthProvider({ children }) {
         console.log("UID:", firebaseUser.uid);
         setUser(firebaseUser);
         const snap = await getDoc(doc(db, "users", firebaseUser.uid));
+        alert(`DOC EXISTS: ${snap.exists()}`);
+        if (snap.exists()) {
+          alert(
+            `COMPANY: ${
+              snap.data()?.company
+                ? 'SIM'
+                : 'NAO'
+            }`
+          );
+        }
         setHasCompany(snap.exists() && !!snap.data()?.company);
+        alert(`HAS COMPANY: ${snap.exists() && !!snap.data()?.company}`);
       } else {
         alert('SEM USUARIO');
         setUser(null);
