@@ -25,12 +25,13 @@ export function AuthProvider({ children }) {
           uid: result?.user?.uid ?? null,
         });
         if (result?.user) {
+          alert(`REDIRECT OK: ${result.user.email}`);
           setUser(result.user);
         }
       })
       .catch((error) => {
         console.error("Redirect Error:", error);
-        alert("Redirect Error: " + error.message);
+        alert(`REDIRECT ERROR: ${error.message}`);
       });
   }, []);
 
@@ -41,11 +42,13 @@ export function AuthProvider({ children }) {
         email: firebaseUser?.email ?? null,
       });
       if (firebaseUser) {
+        alert(`AUTH OK: ${firebaseUser.email}`);
         console.log("UID:", firebaseUser.uid);
         setUser(firebaseUser);
         const snap = await getDoc(doc(db, "users", firebaseUser.uid));
         setHasCompany(snap.exists() && !!snap.data()?.company);
       } else {
+        alert('SEM USUARIO');
         setUser(null);
         setHasCompany(false);
       }
