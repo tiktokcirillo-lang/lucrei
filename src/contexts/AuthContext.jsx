@@ -17,8 +17,13 @@ export function AuthProvider({ children }) {
   const [hasCompany, setHasCompany] = useState(false);
 
   useEffect(() => {
+    console.log("Auth getRedirectResult: start");
     getRedirectResult(auth)
       .then((result) => {
+        console.log("Auth getRedirectResult: result", {
+          hasResult: !!result,
+          uid: result?.user?.uid ?? null,
+        });
         if (result?.user) {
           setUser(result.user);
         }
@@ -31,6 +36,10 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log("Auth onAuthStateChanged:", {
+        uid: firebaseUser?.uid ?? null,
+        email: firebaseUser?.email ?? null,
+      });
       if (firebaseUser) {
         console.log("UID:", firebaseUser.uid);
         setUser(firebaseUser);
@@ -51,6 +60,11 @@ export function AuthProvider({ children }) {
 
     try {
       if (isIOS || isSafari) {
+        console.log("Auth signInWithRedirect: start", {
+          isIOS,
+          isSafari,
+          userAgent: navigator.userAgent,
+        });
         await signInWithRedirect(auth, googleProvider);
       } else {
         await signInWithPopup(auth, googleProvider);
@@ -58,6 +72,10 @@ export function AuthProvider({ children }) {
     } catch (error) {
       console.error('Login error:', error);
       if (error.code === 'auth/popup-blocked') {
+        console.log("Auth signInWithRedirect: popup fallback", {
+          errorCode: error.code,
+          userAgent: navigator.userAgent,
+        });
         await signInWithRedirect(auth, googleProvider);
       }
     }
