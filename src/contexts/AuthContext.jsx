@@ -23,7 +23,10 @@ export function AuthProvider({ children }) {
           setUser(result.user);
         }
       })
-      .catch(() => {});
+      .catch((error) => {
+        console.error("Redirect Error:", error);
+        alert("Redirect Error: " + error.message);
+      });
   }, []);
 
   useEffect(() => {
