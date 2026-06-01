@@ -45,19 +45,33 @@ export function AuthProvider({ children }) {
         alert(`AUTH OK: ${firebaseUser.email}`);
         console.log("UID:", firebaseUser.uid);
         setUser(firebaseUser);
-        const snap = await getDoc(doc(db, "users", firebaseUser.uid));
-        alert(`DOC EXISTS: ${snap.exists()}`);
-        if (snap.exists()) {
+        try {
+          const snap = await getDoc(doc(db, "users", firebaseUser.uid));
+          alert(`DOC EXISTS: ${snap.exists()}`);
+          if (snap.exists()) {
+            alert(
+              `COMPANY: ${
+                snap.data()?.company
+                  ? 'SIM'
+                  : 'NAO'
+              }`
+            );
+          }
+          const hasCompanyValue =
+            snap.exists() &&
+            !!snap.data()?.company;
+
+          alert(`HAS COMPANY: ${hasCompanyValue}`);
+          setHasCompany(hasCompanyValue);
+        } catch (error) {
           alert(
-            `COMPANY: ${
-              snap.data()?.company
-                ? 'SIM'
-                : 'NAO'
+            `FIRESTORE ERROR: ${
+              error.code || error.message
             }`
           );
+          console.error(error);
+          setHasCompany(false);
         }
-        setHasCompany(snap.exists() && !!snap.data()?.company);
-        alert(`HAS COMPANY: ${snap.exists() && !!snap.data()?.company}`);
       } else {
         alert('SEM USUARIO');
         setUser(null);
