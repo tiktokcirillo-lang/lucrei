@@ -5,7 +5,7 @@ import {
   signOut
 } from "firebase/auth";
 import { auth, googleProvider, db } from "../lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 
 const AuthContext = createContext();
 
@@ -15,18 +15,31 @@ export function AuthProvider({ children }) {
   const [hasCompany, setHasCompany] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    let unsubDoc = null;
+
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (unsubDoc) {
+        unsubDoc();
+        unsubDoc = null;
+      }
+
       if (firebaseUser) {
         setUser(firebaseUser);
-        const snap = await getDoc(doc(db, "users", firebaseUser.uid));
-        setHasCompany(snap.exists() && !!snap.data()?.company);
+        unsubDoc = onSnapshot(doc(db, "users", firebaseUser.uid), (snap) => {
+          setHasCompany(snap.exists() && !!snap.data()?.company);
+          setLoading(false);
+        });
       } else {
         setUser(null);
         setHasCompany(false);
+        setLoading(false);
       }
-      setLoading(false);
     });
-    return unsubscribe;
+
+    return () => {
+      unsubscribe();
+      if (unsubDoc) unsubDoc();
+    };
   }, []);
 
   const loginWithGoogle = () => {

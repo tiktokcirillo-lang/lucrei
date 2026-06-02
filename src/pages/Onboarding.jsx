@@ -109,7 +109,8 @@ export default function Onboarding() {
         createdAt: serverTimestamp(),
       });
 
-      navigate("/");
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      navigate("/", { replace: true });
     } catch (err) {
       console.error(err);
       setSaving(false);
