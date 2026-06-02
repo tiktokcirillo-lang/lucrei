@@ -2,8 +2,6 @@ import { createContext, useContext, useEffect, useState } from "react";
 import {
   onAuthStateChanged,
   signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
   signOut
 } from "firebase/auth";
 import { auth, googleProvider, db } from "../lib/firebase";
@@ -15,16 +13,6 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [hasCompany, setHasCompany] = useState(false);
-
-  useEffect(() => {
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result?.user) {
-          setUser(result.user);
-        }
-      })
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -41,13 +29,7 @@ export function AuthProvider({ children }) {
     return unsubscribe;
   }, []);
 
-  const loginWithGoogle = async () => {
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-    if (isIOS) {
-      return signInWithRedirect(auth, googleProvider);
-    }
+  const loginWithGoogle = () => {
     return signInWithPopup(auth, googleProvider);
   };
 
