@@ -4,10 +4,10 @@ import {
   signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
-  signOut,
+  signOut
 } from "firebase/auth";
 import { auth, googleProvider, db } from "../lib/firebase";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 
 const AuthContext = createContext();
 
@@ -27,55 +27,28 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    let unsubscribeDoc = null;
-
-    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
-      if (unsubscribeDoc) {
-        unsubscribeDoc();
-        unsubscribeDoc = null;
-      }
-
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
-        unsubscribeDoc = onSnapshot(
-          doc(db, "users", firebaseUser.uid),
-          (snap) => {
-            setHasCompany(snap.exists() && !!snap.data()?.company);
-            setLoading(false);
-          },
-          () => {
-            setHasCompany(false);
-            setLoading(false);
-          }
-        );
+        const snap = await getDoc(doc(db, "users", firebaseUser.uid));
+        setHasCompany(snap.exists() && !!snap.data()?.company);
       } else {
         setUser(null);
         setHasCompany(false);
-        setLoading(false);
       }
+      setLoading(false);
     });
-
-    return () => {
-      unsubscribeAuth();
-      if (unsubscribeDoc) unsubscribeDoc();
-    };
+    return unsubscribe;
   }, []);
 
   const loginWithGoogle = async () => {
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-    try {
-      if (isIOS || isSafari) {
-        await signInWithRedirect(auth, googleProvider);
-      } else {
-        await signInWithPopup(auth, googleProvider);
-      }
-    } catch (error) {
-      if (error.code === 'auth/popup-blocked') {
-        await signInWithRedirect(auth, googleProvider);
-      }
+    if (isIOS) {
+      return signInWithRedirect(auth, googleProvider);
     }
+    return signInWithPopup(auth, googleProvider);
   };
 
   const logout = () => signOut(auth);
