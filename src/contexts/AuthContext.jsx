@@ -7,7 +7,7 @@ import {
   signOut,
 } from "firebase/auth";
 import { auth, googleProvider, db } from "../lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 
 const AuthContext = createContext();
 
@@ -17,69 +17,51 @@ export function AuthProvider({ children }) {
   const [hasCompany, setHasCompany] = useState(false);
 
   useEffect(() => {
-    console.log("Auth getRedirectResult: start");
     getRedirectResult(auth)
       .then((result) => {
-        console.log("Auth getRedirectResult: result", {
-          hasResult: !!result,
-          uid: result?.user?.uid ?? null,
-        });
         if (result?.user) {
-          alert(`REDIRECT OK: ${result.user.email}`);
           setUser(result.user);
         }
       })
       .catch((error) => {
-        console.error("Redirect Error:", error);
-        alert(`REDIRECT ERROR: ${error.message}`);
+        console.error("Redirect result error:", error.code, error.message);
       });
   }, []);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log("Auth onAuthStateChanged:", {
-        uid: firebaseUser?.uid ?? null,
-        email: firebaseUser?.email ?? null,
-      });
-      if (firebaseUser) {
-        alert(`AUTH OK: ${firebaseUser.email}`);
-        console.log("UID:", firebaseUser.uid);
-        setUser(firebaseUser);
-        try {
-          const snap = await getDoc(doc(db, "users", firebaseUser.uid));
-          alert(`DOC EXISTS: ${snap.exists()}`);
-          if (snap.exists()) {
-            alert(
-              `COMPANY: ${
-                snap.data()?.company
-                  ? 'SIM'
-                  : 'NAO'
-              }`
-            );
-          }
-          const hasCompanyValue =
-            snap.exists() &&
-            !!snap.data()?.company;
+    let unsubscribeDoc = null;
 
-          alert(`HAS COMPANY: ${hasCompanyValue}`);
-          setHasCompany(hasCompanyValue);
-        } catch (error) {
-          alert(
-            `FIRESTORE ERROR: ${
-              error.code || error.message
-            }`
-          );
-          console.error(error);
-          setHasCompany(false);
-        }
+    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
+      if (unsubscribeDoc) {
+        unsubscribeDoc();
+        unsubscribeDoc = null;
+      }
+
+      if (firebaseUser) {
+        setUser(firebaseUser);
+        unsubscribeDoc = onSnapshot(
+          doc(db, "users", firebaseUser.uid),
+          (snap) => {
+            setHasCompany(snap.exists() && !!snap.data()?.company);
+            setLoading(false);
+          },
+          (error) => {
+            console.error("Firestore listener error:", error);
+            setHasCompany(false);
+            setLoading(false);
+          }
+        );
       } else {
-        alert('SEM USUARIO');
         setUser(null);
         setHasCompany(false);
+        setLoading(false);
       }
-      setLoading(false);
     });
-    return unsubscribe;
+
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeDoc) unsubscribeDoc();
+    };
   }, []);
 
   const loginWithGoogle = async () => {
@@ -88,22 +70,12 @@ export function AuthProvider({ children }) {
 
     try {
       if (isIOS || isSafari) {
-        console.log("Auth signInWithRedirect: start", {
-          isIOS,
-          isSafari,
-          userAgent: navigator.userAgent,
-        });
         await signInWithRedirect(auth, googleProvider);
       } else {
         await signInWithPopup(auth, googleProvider);
       }
     } catch (error) {
-      console.error('Login error:', error);
       if (error.code === 'auth/popup-blocked') {
-        console.log("Auth signInWithRedirect: popup fallback", {
-          errorCode: error.code,
-          userAgent: navigator.userAgent,
-        });
         await signInWithRedirect(auth, googleProvider);
       }
     }
