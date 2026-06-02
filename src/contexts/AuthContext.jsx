@@ -23,9 +23,7 @@ export function AuthProvider({ children }) {
           setUser(result.user);
         }
       })
-      .catch((error) => {
-        console.error("Redirect result error:", error.code, error.message);
-      });
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -45,8 +43,7 @@ export function AuthProvider({ children }) {
             setHasCompany(snap.exists() && !!snap.data()?.company);
             setLoading(false);
           },
-          (error) => {
-            console.error("Firestore listener error:", error);
+          () => {
             setHasCompany(false);
             setLoading(false);
           }
