@@ -42,9 +42,9 @@ function DreRow({ type, label, value, indent = 0 }) {
 
   if (type === "result") {
     return (
-      <div className={`${base} bg-gray-800 rounded-lg my-1`}>
-        <span className="text-sm font-bold text-white">{label}</span>
-        <span className={`text-sm font-bold ${value >= 0 ? "text-white" : "text-red-400"}`}>
+      <div className={`${base} bg-[#0A0D14] border border-[#1E293B] rounded-lg my-1`}>
+        <span className="text-sm font-bold text-[#F1F5F9]">{label}</span>
+        <span className={`text-sm font-bold ${value >= 0 ? "text-[#F1F5F9]" : "text-[#EF4444]"}`}>
           {currency(value)}
         </span>
       </div>
@@ -52,9 +52,9 @@ function DreRow({ type, label, value, indent = 0 }) {
   }
 
   const textColor =
-    type === "income" ? "text-green-400" :
-    type === "deduction" ? "text-red-400" :
-    "text-gray-500";
+    type === "income" ? "text-[#10B981]" :
+    type === "deduction" ? "text-[#EF4444]" :
+    "text-[#475569]";
 
   return (
     <div
@@ -134,37 +134,38 @@ export default function DRE() {
 
   const marginBadge =
     dre.margemLiquida == null ? null :
-    dre.margemLiquida > 20 ? "bg-green-500/20 text-green-400 border-green-500/30" :
+    dre.margemLiquida > 20 ? "bg-[#10B981]/20 text-[#10B981] border-[#10B981]/30" :
     dre.margemLiquida >= 10 ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" :
-    "bg-red-500/20 text-red-400 border-red-500/30";
+    "bg-[#EF4444]/20 text-[#EF4444] border-[#EF4444]/30";
 
   const selectedLabel = PERIOD_OPTIONS.find((o) => o.value === period)?.label ?? "";
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <p className="text-gray-500 text-sm">Carregando DRE...</p>
+      <div className="min-h-screen bg-[#060A12] flex items-center justify-center">
+        <p className="text-[#475569] text-sm">Carregando DRE...</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-gray-950 p-4 md:p-8 min-h-screen">
+    <div className="bg-[#060A12] p-4 md:p-8 min-h-screen">
       <div className="max-w-2xl mx-auto">
+
         {/* Header */}
         <div className="flex items-start justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-white mb-1">DRE</h1>
-            <p className="text-gray-400 text-sm">Demonstração do Resultado do Exercício</p>
+            <h1 className="text-2xl font-bold text-[#F1F5F9]">DRE</h1>
+            <p className="text-[#64748B] text-sm mt-1">Demonstração do Resultado do Exercício</p>
           </div>
           <div className="relative group">
             <button
               disabled
-              className="px-4 py-2 rounded-lg bg-gray-800 text-gray-500 text-sm font-medium cursor-not-allowed select-none"
+              className="px-4 py-2 rounded-xl bg-[#0A0D14] border border-[#1E293B] text-[#64748B] text-sm font-medium cursor-not-allowed select-none transition-all duration-150"
             >
               Exportar PDF
             </button>
-            <span className="absolute right-0 top-10 bg-gray-700 text-gray-200 text-xs px-2 py-1 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition pointer-events-none z-10">
+            <span className="absolute right-0 top-10 bg-[#0F1623] border border-[#1E293B] text-[#94A3B8] text-xs px-2 py-1 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition pointer-events-none z-10">
               Em breve
             </span>
           </div>
@@ -172,21 +173,21 @@ export default function DRE() {
 
         {/* Period selector */}
         <div className="flex items-center gap-3 mb-6">
-          <label className="text-sm text-gray-400 shrink-0">Período:</label>
+          <label className="text-xs font-medium text-[#64748B] uppercase tracking-wide shrink-0">Período</label>
           <select
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
-            className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-green-500"
+            className="bg-[#0A0D14] border border-[#1E293B] text-[#F1F5F9] text-sm rounded-lg px-3 py-2 outline-none focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981] transition-all duration-150"
           >
             {PERIOD_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
-          <span className="text-xs text-gray-500 hidden sm:block">Exibindo: {selectedLabel}</span>
+          <span className="text-xs text-[#475569] hidden sm:block">Exibindo: {selectedLabel}</span>
         </div>
 
         {/* DRE table */}
-        <div className="bg-gray-900 rounded-2xl p-3 mb-6">
+        <div className="bg-[#0F1623] border border-[#1E293B] rounded-xl p-3 mb-6">
           <DreRow type="income" label="(+) Receita Bruta" value={dre.receitaBruta} />
           <DreRow type="deduction" label="(-) Deduções Fiscais" value={dre.deducoesFiscais} />
           <DreRow type="result" label="(=) Receita Líquida" value={dre.receitaLiquida} />
@@ -218,8 +219,8 @@ export default function DRE() {
           <DreRow type="result" label="(=) Lucro Líquido" value={dre.lucroLiquido} />
 
           {marginBadge && (
-            <div className="flex items-center justify-between px-4 pt-3 pb-1 border-t border-gray-800 mt-2">
-              <span className="text-sm text-gray-400">(%) Margem Líquida</span>
+            <div className="flex items-center justify-between px-4 pt-3 pb-1 border-t border-[#1E293B] mt-2">
+              <span className="text-sm text-[#64748B]">(%) Margem Líquida</span>
               <span className={`text-sm font-bold px-3 py-0.5 rounded-full border ${marginBadge}`}>
                 {pct(dre.margemLiquida)}
               </span>
@@ -228,29 +229,30 @@ export default function DRE() {
         </div>
 
         {/* Summary card */}
-        <div className="bg-gray-900 rounded-2xl p-5 grid grid-cols-1 sm:grid-cols-3 gap-5">
+        <div className="bg-[#0F1623] border border-[#1E293B] rounded-xl p-5 grid grid-cols-1 sm:grid-cols-3 gap-5">
           <div>
-            <p className="text-xs text-gray-400 mb-1">Ponto de Equilíbrio (R$)</p>
-            <p className="text-xl font-bold text-white">
+            <p className="text-xs text-[#64748B] mb-1">Ponto de Equilíbrio (R$)</p>
+            <p className="text-xl font-bold text-[#F1F5F9]">
               {dre.peReais != null ? currency(dre.peReais) : "—"}
             </p>
-            <p className="text-xs text-gray-500 mt-0.5">receita mínima mensal</p>
+            <p className="text-xs text-[#475569] mt-0.5">receita mínima mensal</p>
           </div>
           <div>
-            <p className="text-xs text-gray-400 mb-1">Ponto de Equilíbrio (un)</p>
-            <p className="text-xl font-bold text-white">
+            <p className="text-xs text-[#64748B] mb-1">Ponto de Equilíbrio (un)</p>
+            <p className="text-xl font-bold text-[#F1F5F9]">
               {dre.peUnidades != null ? `${dre.peUnidades} un` : "—"}
             </p>
-            <p className="text-xs text-gray-500 mt-0.5">unidades mínimas/mês</p>
+            <p className="text-xs text-[#475569] mt-0.5">unidades mínimas/mês</p>
           </div>
           <div>
-            <p className="text-xs text-gray-400 mb-1">EBITDA Estimado</p>
-            <p className={`text-xl font-bold ${dre.ebitda >= 0 ? "text-green-400" : "text-red-400"}`}>
+            <p className="text-xs text-[#64748B] mb-1">EBITDA Estimado</p>
+            <p className={`text-xl font-bold ${dre.ebitda >= 0 ? "text-[#10B981]" : "text-[#EF4444]"}`}>
               {currency(dre.ebitda)}
             </p>
-            <p className="text-xs text-gray-500 mt-0.5">antes de impostos</p>
+            <p className="text-xs text-[#475569] mt-0.5">antes de impostos</p>
           </div>
         </div>
+
       </div>
     </div>
   );
