@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { collection, onSnapshot } from "firebase/firestore";
 import SummaryCard from "../components/dashboard/SummaryCard";
-import { TrendingUp, DollarSign, Percent, Package, BarChart2 } from "lucide-react";
+import { TrendingUp, DollarSign, Percent, Package, BarChart2, AlertTriangle, ClipboardList } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -102,7 +102,7 @@ export default function Dashboard() {
           <div className="flex flex-col gap-3 mb-8">
             {alerts.low.length > 0 && (
               <div className="border rounded-xl px-4 py-3 flex items-start gap-3" style={{ backgroundColor: 'rgba(239,68,68,0.08)', borderColor: 'rgba(239,68,68,0.25)' }}>
-                <span className="text-lg shrink-0" style={{ color: '#EF4444' }}>⚠️</span>
+                <AlertTriangle size={18} className="shrink-0 mt-0.5" style={{ color: '#EF4444' }} />
                 <div>
                   <p className="text-sm font-semibold" style={{ color: '#EF4444' }}>Margem crítica</p>
                   <p className="text-xs mt-0.5" style={{ color: 'rgba(252,165,165,0.7)' }}>
@@ -113,7 +113,7 @@ export default function Dashboard() {
             )}
             {alerts.noVol.length > 0 && (
               <div className="border rounded-xl px-4 py-3 flex items-start gap-3" style={{ backgroundColor: 'rgba(245,158,11,0.08)', borderColor: 'rgba(245,158,11,0.25)' }}>
-                <span className="text-lg shrink-0" style={{ color: '#F59E0B' }}>📋</span>
+                <ClipboardList size={18} className="shrink-0 mt-0.5" style={{ color: '#F59E0B' }} />
                 <div>
                   <p className="text-sm font-semibold" style={{ color: '#F59E0B' }}>Volume não informado</p>
                   <p className="text-xs mt-0.5" style={{ color: 'rgba(253,230,138,0.7)' }}>

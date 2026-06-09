@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { collection, getDocs, getDoc, doc } from "firebase/firestore";
 import { jsPDF } from "jspdf";
+import { TrendingUp, BarChart2 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { db } from "../lib/firebase";
 
@@ -270,7 +271,7 @@ export default function Relatorios() {
           {/* Card 1 — Margem por Produto */}
           <div className="bg-gray-900 rounded-2xl p-5 flex items-start justify-between gap-4">
             <div className="flex items-start gap-4">
-              <span className="text-2xl mt-0.5">📈</span>
+              <TrendingUp size={20} className="mt-0.5 shrink-0" style={{ color: '#10B981' }} />
               <div>
                 <p className="text-sm font-semibold text-white mb-1">
                   Relatório de Margem por Produto
@@ -291,7 +292,7 @@ export default function Relatorios() {
           {/* Card 2 — DRE */}
           <div className="bg-gray-900 rounded-2xl p-5 flex items-start justify-between gap-4">
             <div className="flex items-start gap-4">
-              <span className="text-2xl mt-0.5">📊</span>
+              <BarChart2 size={20} className="mt-0.5 shrink-0" style={{ color: '#3B82F6' }} />
               <div>
                 <p className="text-sm font-semibold text-white mb-1">DRE Mensal</p>
                 <p className="text-xs text-gray-400">

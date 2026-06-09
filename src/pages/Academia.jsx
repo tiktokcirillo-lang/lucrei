@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { collection, onSnapshot } from "firebase/firestore";
+import { GraduationCap } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { db } from "../lib/firebase";
 
@@ -35,7 +36,7 @@ function ContentCard({ item }) {
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-green-900 to-gray-900 flex items-center justify-center">
-            <span className="text-4xl opacity-40">🎓</span>
+            <GraduationCap size={32} className="opacity-40" style={{ color: '#94A3B8' }} />
           </div>
         )}
         <TypeBadge type={item.type} />
@@ -91,7 +92,7 @@ export default function Academia() {
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-white mb-1">Academia Lucrei 🎓</h1>
+          <h1 className="text-2xl font-bold text-white mb-1">Academia Lucrei</h1>
           <p className="text-gray-400 text-sm">Aprenda a precificar, lucrar e crescer</p>
         </div>
 
@@ -115,7 +116,7 @@ export default function Academia() {
         {/* Grid or empty state */}
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
-            <span className="text-5xl mb-4">🎓</span>
+            <GraduationCap size={48} className="mb-4" style={{ color: '#1E293B' }} />
             <p className="text-gray-400 text-sm max-w-xs">
               Conteúdo em breve! Estamos preparando materiais exclusivos para você.
             </p>

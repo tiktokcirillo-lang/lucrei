@@ -11,6 +11,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { FlaskConical } from "lucide-react";
 
 const TAX_RATES = {
   mei: 0.05,
@@ -137,7 +138,7 @@ function FichaTecnicaModal({ productName, user, onClose, onApply }) {
       <div className="bg-gray-900 rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
         <div className="p-5 border-b border-gray-800 flex items-center justify-between">
           <h2 className="text-white font-bold text-base truncate pr-3">
-            🧪 Ficha Técnica{productName ? ` — ${productName}` : ""}
+            <FlaskConical size={16} className="inline mr-1.5 -mt-0.5" /> Ficha Técnica{productName ? ` — ${productName}` : ""}
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white text-xl leading-none transition flex-shrink-0">
             ✕
@@ -462,7 +463,7 @@ export default function Calculadora() {
                 onClick={() => setShowFichaTecnica(true)}
                 className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 font-medium transition w-fit"
               >
-                🧪 Montar Ficha Técnica
+                <FlaskConical size={13} className="inline mr-1" /> Montar Ficha Técnica
               </button>
               <Field label="Embalagem">
                 <RInput prefix="R$" value={form.embalagem} onChange={(v) => setF("embalagem", v)} />

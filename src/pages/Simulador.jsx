@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { collection, getDocs } from "firebase/firestore";
+import { CheckCircle2, XCircle, Target } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { db } from "../lib/firebase";
 
@@ -443,7 +444,10 @@ function TabFreteGratis({ produtos }) {
                       : "bg-red-500/10 border-red-500/30"
                   }`}
                 >
-                  <span className="text-xl shrink-0">{cobreaFrete ? "✅" : "❌"}</span>
+                  {cobreaFrete
+                    ? <CheckCircle2 size={20} className="shrink-0 mt-0.5" style={{ color: '#22c55e' }} />
+                    : <XCircle size={20} className="shrink-0 mt-0.5" style={{ color: '#ef4444' }} />
+                  }
                   <div>
                     <p
                       className={`text-sm font-semibold ${
@@ -515,7 +519,7 @@ export default function Simulador() {
           <p className="text-gray-500 text-sm">Carregando produtos...</p>
         ) : produtos.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="text-4xl mb-3">🎯</div>
+            <Target size={48} className="mb-3" style={{ color: '#1E293B' }} />
             <p className="text-white font-semibold mb-1">Nenhum produto cadastrado</p>
             <p className="text-gray-400 text-sm">Cadastre produtos na Calculadora primeiro.</p>
           </div>

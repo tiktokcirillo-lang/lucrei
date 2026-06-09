@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { collection, onSnapshot, deleteDoc, doc } from "firebase/firestore";
+import { Package } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { db } from "../lib/firebase";
 
@@ -124,7 +125,7 @@ export default function Produtos() {
         {/* Empty state */}
         {!loading && produtos.length === 0 && (
           <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="text-5xl mb-4">📦</div>
+            <Package size={48} className="mb-4" style={{ color: '#1E293B' }} />
             <h2 className="text-xl font-semibold text-white mb-2">Nenhum produto ainda</h2>
             <p className="text-gray-400 text-sm mb-6 max-w-xs">
               Use a calculadora para precificar seu primeiro produto e salvá-lo aqui.

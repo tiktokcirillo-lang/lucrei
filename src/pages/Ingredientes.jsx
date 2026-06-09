@@ -9,6 +9,7 @@ import {
   doc,
   serverTimestamp,
 } from "firebase/firestore";
+import { Camera, Carrot } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { db } from "../lib/firebase";
 
@@ -365,7 +366,7 @@ function ScanModal({ onClose, onImport }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
       <div className="bg-gray-900 rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
         <div className="p-5 border-b border-gray-800 flex items-center justify-between">
-          <h2 className="text-white font-bold text-lg">📷 Escanear Cupom</h2>
+          <h2 className="text-white font-bold text-lg flex items-center gap-2"><Camera size={18} /> Escanear Cupom</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white text-xl leading-none transition"
@@ -413,7 +414,7 @@ function ScanModal({ onClose, onImport }) {
                   htmlFor="scan-camera-input"
                   className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-xl cursor-pointer font-semibold text-sm transition"
                 >
-                  📷 Tirar Foto
+                  <Camera size={15} /> Tirar Foto
                 </label>
                 <label
                   htmlFor="scan-gallery-input"
@@ -605,7 +606,7 @@ export default function Ingredientes() {
               onClick={() => setShowScan(true)}
               className="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium transition"
             >
-              📷 Escanear Cupom
+              <Camera size={15} /> Escanear Cupom
             </button>
             <button
               onClick={() => { setEditTarget(null); setModal("form"); }}
@@ -618,7 +619,7 @@ export default function Ingredientes() {
 
         {ingredients.length === 0 ? (
           <div className="text-center py-24 text-gray-500">
-            <p className="text-5xl mb-4">🥕</p>
+            <Carrot size={48} className="mb-4" style={{ color: '#1E293B' }} />
             <p className="font-medium text-gray-400 text-lg">Nenhum ingrediente cadastrado</p>
             <p className="text-sm mt-2">
               Adicione ingredientes ou escaneie um cupom para começar

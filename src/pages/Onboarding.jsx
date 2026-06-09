@@ -120,7 +120,7 @@ export default function Onboarding() {
   return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
       <div className="w-full max-w-lg">
-        <h1 className="text-3xl font-bold text-white text-center mb-2">Lucrei 💰</h1>
+        <h1 className="text-3xl font-bold text-white text-center mb-2">Lucrei</h1>
         <p className="text-gray-400 text-center mb-8">Vamos configurar o seu negócio</p>
 
         <Stepper step={step} />
@@ -250,7 +250,7 @@ export default function Onboarding() {
                 disabled={saving}
                 className="flex-1 py-2.5 rounded-xl bg-green-500 hover:bg-green-600 disabled:opacity-40 text-white font-semibold transition text-sm"
               >
-                {saving ? "Salvando..." : "Começar 🚀"}
+                {saving ? "Salvando..." : "Começar"}
               </button>
             )}
           </div>
