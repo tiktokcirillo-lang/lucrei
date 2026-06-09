@@ -11,7 +11,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { FlaskConical } from "lucide-react";
+import { FlaskConical, Save } from "lucide-react";
 
 const TAX_RATES = {
   mei: 0.05,
@@ -45,10 +45,13 @@ function pct(v) {
 }
 
 function RInput({ prefix, value, onChange, placeholder = "0,00" }) {
+  const isPct = prefix === "%";
   return (
-    <div className="flex items-center bg-gray-800 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-green-500">
-      {prefix && (
-        <span className="px-3 text-gray-500 text-sm select-none">{prefix}</span>
+    <div className="relative">
+      {!isPct && prefix && (
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#475569] text-sm font-medium select-none pointer-events-none">
+          {prefix}
+        </span>
       )}
       <input
         type="number"
@@ -57,18 +60,28 @@ function RInput({ prefix, value, onChange, placeholder = "0,00" }) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="flex-1 bg-transparent text-white py-2.5 px-3 outline-none placeholder-gray-600 text-sm"
+        className={`w-full bg-[#0A0D14] border border-[#1E293B] rounded-lg py-3 text-[#F1F5F9] text-sm placeholder-[#334155] focus:outline-none focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981] transition-all duration-150 ${
+          !isPct && prefix ? "pl-10 pr-4" : isPct ? "pl-4 pr-8" : "px-4"
+        }`}
       />
+      {isPct && (
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#475569] text-sm select-none pointer-events-none">
+          %
+        </span>
+      )}
     </div>
   );
 }
 
 function Section({ title, children }) {
   return (
-    <div className="bg-gray-900 rounded-2xl p-5">
-      <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
-        {title}
-      </h3>
+    <div className="bg-[#0F1623] border border-[#1E293B] rounded-xl p-6 mb-4">
+      <div className="flex items-center gap-2 mb-5">
+        <div className="w-1 h-5 bg-[#10B981] rounded-full" />
+        <h3 className="text-sm font-semibold text-[#94A3B8] uppercase tracking-wider">
+          {title}
+        </h3>
+      </div>
       <div className="flex flex-col gap-3">{children}</div>
     </div>
   );
@@ -77,7 +90,9 @@ function Section({ title, children }) {
 function Field({ label, children }) {
   return (
     <div>
-      <label className="block text-sm text-gray-400 mb-1">{label}</label>
+      <label className="block text-xs font-medium text-[#64748B] uppercase tracking-wide mb-2">
+        {label}
+      </label>
       {children}
     </div>
   );
@@ -85,9 +100,9 @@ function Field({ label, children }) {
 
 function ReadonlyRow({ label, value, highlight }) {
   return (
-    <div className="flex items-center justify-between py-2 px-3 bg-gray-800 rounded-lg">
-      <span className="text-sm text-gray-400">{label}</span>
-      <span className={`text-sm font-semibold ${highlight ? "text-green-400" : "text-white"}`}>
+    <div className="flex items-center justify-between py-2.5 px-3 bg-[#0A0D14] border border-[#1E293B] rounded-lg">
+      <span className="text-xs text-[#64748B]">{label}</span>
+      <span className={`text-sm font-semibold ${highlight ? "text-[#10B981]" : "text-[#94A3B8]"}`}>
         {value}
       </span>
     </div>
@@ -135,20 +150,21 @@ function FichaTecnicaModal({ productName, user, onClose, onApply }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="bg-gray-900 rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
-        <div className="p-5 border-b border-gray-800 flex items-center justify-between">
-          <h2 className="text-white font-bold text-base truncate pr-3">
-            <FlaskConical size={16} className="inline mr-1.5 -mt-0.5" /> Ficha Técnica{productName ? ` — ${productName}` : ""}
+      <div className="bg-[#0F1623] border border-[#1E293B] rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
+        <div className="p-5 border-b border-[#1E293B] flex items-center justify-between">
+          <h2 className="text-[#F1F5F9] font-bold text-base truncate pr-3 flex items-center gap-2">
+            <FlaskConical size={16} style={{ color: '#10B981' }} />
+            Ficha Técnica{productName ? ` — ${productName}` : ""}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white text-xl leading-none transition flex-shrink-0">
+          <button onClick={onClose} className="text-[#475569] hover:text-[#F1F5F9] text-xl leading-none transition flex-shrink-0">
             ✕
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
           <div>
-            <label className="block text-sm text-gray-400 mb-1.5">
-              Essa receita rende quantas unidades?
+            <label className="block text-xs font-medium text-[#64748B] uppercase tracking-wide mb-2">
+              Rendimento (unidades)
             </label>
             <input
               type="number"
@@ -156,27 +172,27 @@ function FichaTecnicaModal({ productName, user, onClose, onApply }) {
               step="1"
               value={rendimento}
               onChange={(e) => setRendimento(e.target.value)}
-              className="w-full bg-gray-800 text-white rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-green-500 text-sm"
+              className="w-full bg-[#0A0D14] border border-[#1E293B] text-[#F1F5F9] rounded-lg px-4 py-3 outline-none focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981] text-sm transition-all duration-150"
               placeholder="Ex: 10"
             />
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-400">Ingredientes da receita</span>
+              <span className="text-xs font-medium text-[#64748B] uppercase tracking-wide">Ingredientes da receita</span>
               <div className="relative">
                 <button
                   onClick={() => setShowDropdown((d) => !d)}
-                  className="text-xs px-3 py-1.5 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 font-medium transition"
+                  className="text-xs px-3 py-1.5 rounded-lg bg-[#10B981]/10 text-[#10B981] hover:bg-[#10B981]/20 font-medium transition"
                 >
                   + Adicionar
                 </button>
                 {showDropdown && (
                   <>
                     <div className="fixed inset-0 z-0" onClick={() => setShowDropdown(false)} />
-                    <div className="absolute right-0 top-full mt-1 w-64 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl z-10 max-h-48 overflow-y-auto">
+                    <div className="absolute right-0 top-full mt-1 w-64 bg-[#0F1623] border border-[#1E293B] rounded-xl shadow-2xl z-10 max-h-48 overflow-y-auto">
                       {ingredients.length === 0 ? (
-                        <p className="text-gray-400 text-sm p-4 text-center">
+                        <p className="text-[#64748B] text-sm p-4 text-center">
                           Nenhum ingrediente cadastrado
                         </p>
                       ) : (
@@ -184,10 +200,10 @@ function FichaTecnicaModal({ productName, user, onClose, onApply }) {
                           <button
                             key={ing.id}
                             onClick={() => addItem(ing)}
-                            className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 hover:text-white flex items-center justify-between transition"
+                            className="w-full text-left px-4 py-2.5 text-sm text-[#94A3B8] hover:bg-[#1E293B] hover:text-[#F1F5F9] flex items-center justify-between transition"
                           >
                             <span className="truncate">{ing.name}</span>
-                            <span className="text-xs text-gray-500 ml-2 flex-shrink-0">
+                            <span className="text-xs text-[#475569] ml-2 flex-shrink-0">
                               {ing.baseUnit}
                             </span>
                           </button>
@@ -200,7 +216,7 @@ function FichaTecnicaModal({ productName, user, onClose, onApply }) {
             </div>
 
             {recipeItems.length === 0 ? (
-              <div className="bg-gray-800 rounded-xl p-6 text-center text-gray-500 text-sm">
+              <div className="bg-[#0A0D14] border border-[#1E293B] rounded-xl p-6 text-center text-[#475569] text-sm">
                 Nenhum ingrediente adicionado à receita
               </div>
             ) : (
@@ -208,9 +224,9 @@ function FichaTecnicaModal({ productName, user, onClose, onApply }) {
                 {recipeItems.map((item) => {
                   const itemCost = (parseFloat(item.qty) || 0) * (item.costPerBaseUnit || 0);
                   return (
-                    <div key={item._key} className="bg-gray-800 rounded-xl p-3.5 flex items-center gap-3">
+                    <div key={item._key} className="bg-[#0A0D14] border border-[#1E293B] rounded-xl p-3.5 flex items-center gap-3">
                       <div className="flex-1 min-w-0">
-                        <p className="text-white text-sm font-medium mb-2 truncate">{item.name}</p>
+                        <p className="text-[#F1F5F9] text-sm font-medium mb-2 truncate">{item.name}</p>
                         <div className="flex items-center gap-2">
                           <input
                             type="number"
@@ -224,18 +240,18 @@ function FichaTecnicaModal({ productName, user, onClose, onApply }) {
                                 )
                               )
                             }
-                            className="w-24 bg-gray-700 text-white text-sm rounded-lg px-3 py-1.5 outline-none focus:ring-1 focus:ring-green-500"
+                            className="w-24 bg-[#0F1623] border border-[#1E293B] text-[#F1F5F9] text-sm rounded-lg px-3 py-1.5 outline-none focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981] transition-all duration-150"
                             placeholder="Qtd"
                           />
-                          <span className="text-gray-400 text-xs">{item.baseUnit}</span>
-                          <span className="ml-auto text-green-400 text-sm font-semibold">
+                          <span className="text-[#475569] text-xs">{item.baseUnit}</span>
+                          <span className="ml-auto text-[#10B981] text-sm font-semibold">
                             {itemCost > 0 ? currency(itemCost) : "—"}
                           </span>
                         </div>
                       </div>
                       <button
                         onClick={() => removeItem(item._key)}
-                        className="text-gray-500 hover:text-red-400 transition p-1 flex-shrink-0"
+                        className="text-[#475569] hover:text-[#EF4444] transition p-1 flex-shrink-0"
                       >
                         ✕
                       </button>
@@ -247,26 +263,26 @@ function FichaTecnicaModal({ productName, user, onClose, onApply }) {
           </div>
         </div>
 
-        <div className="p-5 border-t border-gray-800">
+        <div className="p-5 border-t border-[#1E293B]">
           <div className="flex items-center justify-between mb-2 px-1">
-            <span className="text-sm text-gray-400">CMV total da receita</span>
-            <span className="text-sm text-white font-semibold">{currency(totalCMV)}</span>
+            <span className="text-sm text-[#64748B]">CMV total da receita</span>
+            <span className="text-sm text-[#F1F5F9] font-semibold">{currency(totalCMV)}</span>
           </div>
-          <div className="flex items-center justify-between bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 mb-4">
-            <span className="text-sm text-green-400 font-medium">CMV por unidade</span>
-            <span className="text-xl font-bold text-green-400">{currency(cmvPerUnit)}</span>
+          <div className="flex items-center justify-between bg-[#0F2820] border border-[#10B981]/30 rounded-xl px-4 py-3 mb-4">
+            <span className="text-sm text-[#10B981] font-medium">CMV por unidade</span>
+            <span className="text-xl font-bold text-[#10B981]">{currency(cmvPerUnit)}</span>
           </div>
           <div className="flex gap-3">
             <button
               onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl bg-gray-800 text-gray-300 text-sm font-medium hover:bg-gray-700 transition"
+              className="flex-1 py-2.5 rounded-xl bg-[#0A0D14] border border-[#1E293B] text-[#94A3B8] text-sm font-medium hover:border-[#334155] transition"
             >
               Cancelar
             </button>
             <button
               onClick={() => onApply(cmvPerUnit)}
               disabled={!cmvPerUnit || cmvPerUnit <= 0}
-              className="flex-1 py-2.5 rounded-xl bg-green-500 hover:bg-green-600 disabled:opacity-40 text-white text-sm font-semibold transition"
+              className="flex-1 py-2.5 rounded-xl bg-[#10B981] hover:bg-[#059669] disabled:opacity-40 text-white text-sm font-semibold transition"
             >
               Aplicar à Calculadora
             </button>
@@ -429,19 +445,124 @@ export default function Calculadora() {
     }
   }
 
+  const metrics = [
+    { label: "Preço Mínimo", value: precoMinimo != null ? currency(precoMinimo) : "—", color: "#64748B" },
+    { label: "Margem Real", value: margemReal != null ? pct(margemReal) : "—", color: "#F59E0B" },
+    { label: "Markup", value: markup != null ? `${markup.toFixed(2)}x` : "—", color: "#3B82F6" },
+    { label: "Margem de Contribuição", value: margemContribuicao != null ? currency(margemContribuicao) : "—", color: "#10B981" },
+    { label: "Ponto de Equilíbrio", value: pontoEquilibrio != null ? `${pontoEquilibrio} un/mês` : "—", color: "#8B5CF6" },
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-950 p-4 md:p-8">
+    <div className="min-h-screen bg-[#0A0F1A] p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-2xl font-bold text-white mb-1">
-          {editMode ? "Editar Produto" : "Calculadora de Precificação"}
-        </h1>
-        <p className="text-gray-400 text-sm mb-8">
-          {editMode ? "Atualize os dados do produto e salve as alterações" : "Preencha os campos e veja o preço ideal em tempo real"}
-        </p>
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-[#F1F5F9]">
+            {editMode ? "Editar Produto" : "Calculadora"}
+          </h1>
+          <p className="text-[#64748B] text-sm mt-1">
+            {editMode ? "Atualize os dados do produto" : "Calcule o preço ideal em tempo real"}
+          </p>
+        </div>
 
         <div className="flex flex-col lg:flex-row gap-6 items-start">
-          {/* Left — Form */}
-          <div className="flex-1 flex flex-col gap-4">
+          {/* Results — first on mobile, right on desktop */}
+          <div className="w-full lg:w-80 order-1 lg:order-2 lg:sticky lg:top-4">
+            {/* Preço Sugerido */}
+            <div className="bg-gradient-to-br from-[#0F2820] to-[#0A1F14] border border-[#10B981]/30 rounded-xl p-6 mb-4">
+              <p className="text-[#10B981] text-xs font-semibold uppercase tracking-widest mb-2">
+                Preço Sugerido
+              </p>
+              <p className="text-4xl font-bold text-[#F1F5F9] mb-1">
+                {precoSugerido != null ? currency(precoSugerido) : "—"}
+              </p>
+              <p className="text-[#64748B] text-sm">
+                com {num(form.margem).toFixed(1)}% de margem
+              </p>
+            </div>
+
+            {/* Métricas secundárias */}
+            <div className="bg-[#0F1623] border border-[#1E293B] rounded-xl p-4 mb-4">
+              {metrics.map((item, i) => (
+                <div
+                  key={item.label}
+                  className={`flex items-center justify-between py-2.5 ${i < metrics.length - 1 ? "border-b border-[#1E293B]" : ""}`}
+                >
+                  <span className="text-xs text-[#64748B]">{item.label}</span>
+                  <span className="text-sm font-semibold" style={{ color: item.color }}>
+                    {item.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Gráfico de composição */}
+            {chartData.length > 0 && (
+              <div className="bg-[#0F1623] border border-[#1E293B] rounded-xl p-4 mb-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-[#475569] mb-3">
+                  Composição do Preço
+                </p>
+                <ResponsiveContainer width="100%" height={48}>
+                  <BarChart
+                    data={chartData}
+                    layout="vertical"
+                    margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
+                  >
+                    <XAxis type="number" hide domain={[0, 100]} />
+                    <YAxis type="category" hide />
+                    <Tooltip
+                      formatter={(v, name) => [`${v.toFixed(1)}%`, name]}
+                      contentStyle={{
+                        backgroundColor: "#1E293B",
+                        border: "1px solid #10B981",
+                        borderRadius: 8,
+                        fontSize: 12,
+                      }}
+                      labelStyle={{ color: "#94A3B8" }}
+                      itemStyle={{ color: "#F1F5F9" }}
+                    />
+                    <Bar dataKey="CMV" stackId="a" fill="#EF4444" />
+                    <Bar dataKey="Variáveis" stackId="a" fill="#F59E0B" />
+                    <Bar dataKey="Fixos" stackId="a" fill="#3B82F6" />
+                    <Bar dataKey="Taxas Venda" stackId="a" fill="#8B5CF6" />
+                    <Bar dataKey="Impostos" stackId="a" fill="#8B5CF6" />
+                    <Bar dataKey="Lucro" stackId="a" fill="#10B981" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+                <div className="flex flex-wrap gap-x-3 gap-y-1.5 mt-3">
+                  {[
+                    { label: "CMV", color: "#EF4444" },
+                    { label: "Variáveis", color: "#F59E0B" },
+                    { label: "Fixos", color: "#3B82F6" },
+                    { label: "Impostos", color: "#8B5CF6" },
+                    { label: "Lucro", color: "#10B981" },
+                  ].map(({ label, color }) => (
+                    <div key={label} className="flex items-center gap-1.5">
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+                      <span className="text-xs text-[#64748B]">{label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Botão salvar */}
+            <button
+              onClick={handleSave}
+              disabled={saving || precoSugerido == null}
+              className="w-full bg-[#10B981] hover:bg-[#059669] disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-xl transition-all duration-150 flex items-center justify-center gap-2"
+            >
+              <Save size={16} />
+              {saving
+                ? "Salvando..."
+                : saved
+                ? editMode ? "Produto atualizado!" : "Produto salvo!"
+                : editMode ? "Atualizar Produto" : "Salvar Produto"}
+            </button>
+          </div>
+
+          {/* Form — second on mobile, left on desktop */}
+          <div className="flex-1 flex flex-col order-2 lg:order-1">
             <Section title="Identificação">
               <Field label="Nome do produto">
                 <input
@@ -449,7 +570,7 @@ export default function Calculadora() {
                   value={form.productName}
                   onChange={(e) => setF("productName", e.target.value)}
                   placeholder="Ex: Bolo de pote 200g"
-                  className="w-full bg-gray-800 text-white rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-600 text-sm"
+                  className="w-full bg-[#0A0D14] border border-[#1E293B] rounded-lg px-4 py-3 text-[#F1F5F9] text-sm placeholder-[#334155] focus:outline-none focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981] transition-all duration-150"
                 />
               </Field>
             </Section>
@@ -461,63 +582,43 @@ export default function Calculadora() {
               <button
                 type="button"
                 onClick={() => setShowFichaTecnica(true)}
-                className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 font-medium transition w-fit"
+                className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-[#10B981]/10 text-[#10B981] hover:bg-[#10B981]/20 font-medium transition w-fit"
               >
-                <FlaskConical size={13} className="inline mr-1" /> Montar Ficha Técnica
+                <FlaskConical size={13} /> Montar Ficha Técnica
               </button>
               <Field label="Embalagem">
                 <RInput prefix="R$" value={form.embalagem} onChange={(v) => setF("embalagem", v)} />
               </Field>
               <Field label="Frete de entrada">
-                <RInput
-                  prefix="R$"
-                  value={form.freteEntrada}
-                  onChange={(v) => setF("freteEntrada", v)}
-                />
+                <RInput prefix="R$" value={form.freteEntrada} onChange={(v) => setF("freteEntrada", v)} />
               </Field>
-              <div className="flex items-center justify-between pt-2 border-t border-gray-800">
-                <span className="text-sm text-gray-400">Subtotal CMV</span>
-                <span className="text-sm font-semibold text-white">{currency(cmv)}</span>
+              <div className="flex items-center justify-between pt-3 border-t border-[#1E293B]">
+                <span className="text-xs text-[#64748B] uppercase tracking-wide">Subtotal CMV</span>
+                <span className="text-sm font-semibold text-[#F1F5F9]">{currency(cmv)}</span>
               </div>
             </Section>
 
             <Section title="Custos Variáveis de Venda">
               <Field label="Taxa da plataforma (Mercado Livre, Shopee...)">
-                <RInput
-                  prefix="%"
-                  value={form.taxaPlataforma}
-                  onChange={(v) => setF("taxaPlataforma", v)}
-                />
+                <RInput prefix="%" value={form.taxaPlataforma} onChange={(v) => setF("taxaPlataforma", v)} />
               </Field>
               <Field label="Taxa do gateway de pagamento">
-                <RInput
-                  prefix="%"
-                  value={form.taxaGateway}
-                  onChange={(v) => setF("taxaGateway", v)}
-                />
+                <RInput prefix="%" value={form.taxaGateway} onChange={(v) => setF("taxaGateway", v)} />
               </Field>
               <Field label="Frete de saída (para o cliente)">
-                <RInput
-                  prefix="R$"
-                  value={form.freteSaida}
-                  onChange={(v) => setF("freteSaida", v)}
-                />
+                <RInput prefix="R$" value={form.freteSaida} onChange={(v) => setF("freteSaida", v)} />
               </Field>
               <Field label="CAC unitário (custo de marketing por unidade)">
                 <RInput prefix="R$" value={form.cac} onChange={(v) => setF("cac", v)} />
               </Field>
               <Field label="Provisão para devoluções">
-                <RInput
-                  prefix="%"
-                  value={form.provisaoDevolucoes}
-                  onChange={(v) => setF("provisaoDevolucoes", v)}
-                />
+                <RInput prefix="%" value={form.provisaoDevolucoes} onChange={(v) => setF("provisaoDevolucoes", v)} />
               </Field>
             </Section>
 
             <Section title="Custos Fixos Rateados">
               <Field label="Volume estimado de vendas / mês">
-                <div className="flex items-center bg-gray-800 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-green-500">
+                <div className="relative">
                   <input
                     type="number"
                     min="1"
@@ -525,15 +626,14 @@ export default function Calculadora() {
                     value={form.volumeEstimado}
                     onChange={(e) => setF("volumeEstimado", e.target.value)}
                     placeholder="Ex: 100"
-                    className="flex-1 bg-transparent text-white py-2.5 px-3 outline-none placeholder-gray-600 text-sm"
+                    className="w-full bg-[#0A0D14] border border-[#1E293B] rounded-lg pl-4 pr-12 py-3 text-[#F1F5F9] text-sm placeholder-[#334155] focus:outline-none focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981] transition-all duration-150"
                   />
-                  <span className="px-3 text-gray-500 text-sm select-none">un</span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#475569] text-sm select-none pointer-events-none">
+                    un
+                  </span>
                 </div>
               </Field>
-              <ReadonlyRow
-                label="Custo fixo mensal total"
-                value={currency(fixedCostsTotal)}
-              />
+              <ReadonlyRow label="Custo fixo mensal total" value={currency(fixedCostsTotal)} />
               <ReadonlyRow
                 label="Custo fixo por unidade"
                 value={volume > 0 ? currency(custoFixoUnidade) : "—"}
@@ -543,10 +643,7 @@ export default function Calculadora() {
 
             <Section title="Impostos">
               <ReadonlyRow label="Regime tributário" value={TAX_LABELS[taxRegime]} />
-              <ReadonlyRow
-                label="Alíquota padrão"
-                value={`${(defaultTaxRate * 100).toFixed(2)}%`}
-              />
+              <ReadonlyRow label="Alíquota padrão" value={`${(defaultTaxRate * 100).toFixed(2)}%`} />
               <Field label="Ajuste manual da alíquota (opcional)">
                 <RInput
                   prefix="%"
@@ -555,142 +652,16 @@ export default function Calculadora() {
                   placeholder={`${(defaultTaxRate * 100).toFixed(2)} (padrão)`}
                 />
               </Field>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-[#475569]">
                 Deixe em branco para usar a alíquota padrão do seu regime.
               </p>
             </Section>
 
             <Section title="Margem de Lucro">
               <Field label="Margem desejada">
-                <RInput
-                  prefix="%"
-                  value={form.margem}
-                  onChange={(v) => setF("margem", v)}
-                  placeholder="30"
-                />
+                <RInput prefix="%" value={form.margem} onChange={(v) => setF("margem", v)} placeholder="30" />
               </Field>
             </Section>
-          </div>
-
-          {/* Right — Results */}
-          <div className="w-full lg:w-96 flex flex-col gap-4">
-            <div className="bg-gray-900 rounded-2xl p-5 sticky top-4">
-              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">
-                Resultados
-              </h3>
-
-              {/* Destaque: Preço Sugerido */}
-              <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-5 mb-4 text-center">
-                <p className="text-xs text-green-400 font-semibold uppercase tracking-wide mb-1">
-                  Preço Sugerido
-                </p>
-                <p className="text-4xl font-bold text-green-400">
-                  {precoSugerido != null ? currency(precoSugerido) : "—"}
-                </p>
-                <p className="text-xs text-gray-400 mt-1">
-                  com {num(form.margem).toFixed(1)}% de margem
-                </p>
-              </div>
-
-              <div className="flex flex-col divide-y divide-gray-800">
-                <div className="flex items-center justify-between py-3">
-                  <span className="text-sm text-gray-400">Preço Mínimo (margem 0)</span>
-                  <span className="text-sm font-semibold text-white">
-                    {precoMinimo != null ? currency(precoMinimo) : "—"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between py-3">
-                  <span className="text-sm text-gray-400">Margem Real</span>
-                  <span className="text-sm font-semibold text-white">
-                    {margemReal != null ? pct(margemReal) : "—"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between py-3">
-                  <span className="text-sm text-gray-400">Markup</span>
-                  <span className="text-sm font-semibold text-white">
-                    {markup != null ? `${markup.toFixed(2)}x` : "—"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between py-3">
-                  <span className="text-sm text-gray-400">Margem de Contribuição</span>
-                  <span className="text-sm font-semibold text-white">
-                    {margemContribuicao != null ? currency(margemContribuicao) : "—"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between py-3">
-                  <span className="text-sm text-gray-400">Ponto de Equilíbrio</span>
-                  <span className="text-sm font-semibold text-white">
-                    {pontoEquilibrio != null ? `${pontoEquilibrio} un/mês` : "—"}
-                  </span>
-                </div>
-              </div>
-
-              {/* Gráfico de composição */}
-              {chartData.length > 0 && (
-                <div className="mt-5">
-                  <p className="text-xs text-gray-400 font-medium mb-3">Composição do Preço</p>
-                  <ResponsiveContainer width="100%" height={48}>
-                    <BarChart
-                      data={chartData}
-                      layout="vertical"
-                      margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
-                    >
-                      <XAxis type="number" hide domain={[0, 100]} />
-                      <YAxis type="category" hide />
-                      <Tooltip
-                        formatter={(v, name) => [`${v.toFixed(1)}%`, name]}
-                        contentStyle={{
-                          backgroundColor: "#111827",
-                          border: "1px solid #374151",
-                          borderRadius: 8,
-                          fontSize: 12,
-                        }}
-                        labelStyle={{ color: "#9ca3af" }}
-                        itemStyle={{ color: "#f3f4f6" }}
-                      />
-                      <Bar dataKey="CMV" stackId="a" fill="#ef4444" />
-                      <Bar dataKey="Variáveis" stackId="a" fill="#f97316" />
-                      <Bar dataKey="Fixos" stackId="a" fill="#eab308" />
-                      <Bar dataKey="Taxas Venda" stackId="a" fill="#8b5cf6" />
-                      <Bar dataKey="Impostos" stackId="a" fill="#6b7280" />
-                      <Bar
-                        dataKey="Lucro"
-                        stackId="a"
-                        fill="#22c55e"
-                        radius={[0, 4, 4, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                  <div className="flex flex-wrap gap-x-3 gap-y-1.5 mt-3">
-                    {[
-                      { label: "CMV", color: "bg-red-500" },
-                      { label: "Variáveis", color: "bg-orange-500" },
-                      { label: "Fixos", color: "bg-yellow-500" },
-                      { label: "Taxas venda", color: "bg-violet-500" },
-                      { label: "Impostos", color: "bg-gray-500" },
-                      { label: "Lucro", color: "bg-green-500" },
-                    ].map(({ label, color }) => (
-                      <div key={label} className="flex items-center gap-1.5">
-                        <div className={`w-2 h-2 rounded-full ${color}`} />
-                        <span className="text-xs text-gray-400">{label}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <button
-                onClick={handleSave}
-                disabled={saving || precoSugerido == null}
-                className="w-full mt-6 py-3 rounded-xl bg-green-500 hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold transition text-sm"
-              >
-                {saving
-                  ? "Salvando..."
-                  : saved
-                  ? editMode ? "Produto atualizado!" : "Produto salvo!"
-                  : editMode ? "Salvar Alterações" : "Salvar Produto"}
-              </button>
-            </div>
           </div>
         </div>
       </div>
