@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { collection, onSnapshot, deleteDoc, doc } from "firebase/firestore";
-import { Package } from "lucide-react";
+import { Package, Plus, Pencil, Trash2 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { db } from "../lib/firebase";
 
@@ -11,25 +11,7 @@ function getClass(margemReal) {
   return "C";
 }
 
-const CLASS_CONFIG = {
-  A: {
-    badge: "bg-green-500/20 text-green-400 border border-green-500/30",
-    border: "border-green-500/40",
-    label: "Classe A",
-  },
-  B: {
-    badge: "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30",
-    border: "border-yellow-500/40",
-    label: "Classe B",
-  },
-  C: {
-    badge: "bg-red-500/20 text-red-400 border border-red-500/30",
-    border: "border-red-500/40",
-    label: "Classe C",
-  },
-};
-
-function currency(v) {
+function formatCurrency(v) {
   if (v == null || !isFinite(v)) return "—";
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
@@ -47,7 +29,7 @@ export default function Produtos() {
   const navigate = useNavigate();
   const [produtos, setProdutos] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filtro, setFiltro] = useState("Todos");
+  const [filter, setFilter] = useState("Todos");
 
   useEffect(() => {
     if (!user) return;
@@ -74,41 +56,46 @@ export default function Produtos() {
   }
 
   const filtered = produtos.filter((p) => {
-    if (filtro === "Todos") return true;
-    const cls = getClass(p.results?.margemReal ?? 0);
-    return filtro === `Classe ${cls}`;
+    if (filter === "Todos") return true;
+    const r = p.results ?? {};
+    const cls = getClass(r.margemReal ?? 0);
+    return filter === `Classe ${cls}`;
   });
 
   return (
-    <div className="min-h-screen bg-gray-950 p-4 md:p-8">
+    <div className="min-h-screen bg-[#060A12] p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
+
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div className="mb-8 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-white">Meus Produtos</h1>
-            <p className="text-gray-400 text-sm mt-0.5">
-              {loading ? "Carregando..." : `${produtos.length} produto${produtos.length !== 1 ? "s" : ""} cadastrado${produtos.length !== 1 ? "s" : ""}`}
+            <h1 className="text-2xl font-bold text-[#F1F5F9]">Produtos</h1>
+            <p className="text-[#64748B] text-sm mt-1">
+              {loading
+                ? "Carregando..."
+                : `${produtos.length} produto${produtos.length !== 1 ? "s" : ""} cadastrado${produtos.length !== 1 ? "s" : ""}`}
             </p>
           </div>
           <button
             onClick={() => navigate("/calculadora")}
-            className="self-start sm:self-auto px-5 py-2.5 rounded-xl bg-green-500 hover:bg-green-600 text-white font-semibold text-sm transition"
+            className="flex items-center gap-2 bg-[#10B981] hover:bg-[#059669] text-white font-semibold px-4 py-2.5 rounded-xl transition-all duration-150 text-sm"
           >
-            + Novo Produto
+            <Plus size={16} />
+            Novo Produto
           </button>
         </div>
 
         {/* Filtros */}
         {!loading && produtos.length > 0 && (
-          <div className="flex gap-2 flex-wrap mb-6">
+          <div className="flex gap-2 mb-6">
             {FILTERS.map((f) => (
               <button
                 key={f}
-                onClick={() => setFiltro(f)}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${
-                  filtro === f
-                    ? "bg-green-500 text-white"
-                    : "bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white"
+                onClick={() => setFilter(f)}
+                className={`px-4 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wide transition-all duration-150 ${
+                  filter === f
+                    ? "bg-[#10B981] text-white"
+                    : "bg-[#0F1623] border border-[#1E293B] text-[#64748B] hover:border-[#10B981] hover:text-[#10B981]"
                 }`}
               >
                 {f}
@@ -119,22 +106,23 @@ export default function Produtos() {
 
         {/* Loading */}
         {loading && (
-          <div className="text-gray-500 text-sm">Carregando produtos...</div>
+          <div className="text-[#475569] text-sm">Carregando produtos...</div>
         )}
 
         {/* Empty state */}
         {!loading && produtos.length === 0 && (
           <div className="flex flex-col items-center justify-center py-24 text-center">
-            <Package size={48} className="mb-4" style={{ color: '#1E293B' }} />
-            <h2 className="text-xl font-semibold text-white mb-2">Nenhum produto ainda</h2>
-            <p className="text-gray-400 text-sm mb-6 max-w-xs">
-              Use a calculadora para precificar seu primeiro produto e salvá-lo aqui.
-            </p>
+            <div className="w-16 h-16 bg-[#0F1623] border border-[#1E293B] rounded-2xl flex items-center justify-center mb-4">
+              <Package size={28} className="text-[#334155]" />
+            </div>
+            <h3 className="text-[#94A3B8] font-semibold mb-1">Nenhum produto ainda</h3>
+            <p className="text-[#475569] text-sm mb-6">Precifique seu primeiro produto e salve aqui</p>
             <button
               onClick={() => navigate("/calculadora")}
-              className="px-6 py-2.5 rounded-xl bg-green-500 hover:bg-green-600 text-white font-semibold text-sm transition"
+              className="flex items-center gap-2 bg-[#10B981] hover:bg-[#059669] text-white font-semibold px-5 py-2.5 rounded-xl transition-all duration-150 text-sm"
             >
-              Ir para a Calculadora
+              <Plus size={16} />
+              Calcular primeiro produto
             </button>
           </div>
         )}
@@ -142,8 +130,8 @@ export default function Produtos() {
         {/* Empty filtered state */}
         {!loading && produtos.length > 0 && filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <p className="text-gray-400 text-sm">Nenhum produto com {filtro} encontrado.</p>
-            <button onClick={() => setFiltro("Todos")} className="mt-3 text-green-400 text-sm hover:underline">
+            <p className="text-[#475569] text-sm">Nenhum produto com {filter} encontrado.</p>
+            <button onClick={() => setFilter("Todos")} className="mt-3 text-[#10B981] text-sm hover:underline">
               Ver todos
             </button>
           </div>
@@ -154,79 +142,82 @@ export default function Produtos() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((produto) => {
               const r = produto.results ?? {};
-              const cls = getClass(r.margemReal ?? 0);
-              const cfg = CLASS_CONFIG[cls];
+              const classe = getClass(r.margemReal ?? 0);
 
               return (
                 <div
                   key={produto.id}
-                  className={`bg-gray-900 rounded-2xl p-5 border ${cfg.border} flex flex-col gap-4`}
+                  className="bg-[#0F1623] border border-[#1E293B] rounded-xl overflow-hidden hover:border-[#2D3748] transition-all duration-200 group"
                 >
-                  {/* Card header */}
-                  <div className="flex items-start justify-between gap-2">
-                    <h2 className="text-white font-semibold text-base leading-tight flex-1">
-                      {produto.name || "Produto sem nome"}
-                    </h2>
-                    <span className={`shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full ${cfg.badge}`}>
-                      {cfg.label}
-                    </span>
-                  </div>
+                  {/* Barra de cor por classe ABC */}
+                  <div className={`h-1 w-full ${
+                    classe === "A" ? "bg-[#10B981]" :
+                    classe === "B" ? "bg-[#F59E0B]" :
+                    "bg-[#EF4444]"
+                  }`} />
 
-                  {/* Preço Sugerido */}
-                  <div className="bg-gray-800 rounded-xl px-4 py-3 text-center">
-                    <p className="text-xs text-gray-400 mb-0.5">Preço Sugerido</p>
-                    <p className="text-2xl font-bold text-green-400">
-                      {currency(r.precoSugerido)}
-                    </p>
-                  </div>
-
-                  {/* Indicadores */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="bg-gray-800 rounded-lg px-3 py-2">
-                      <p className="text-xs text-gray-500 mb-0.5">Margem Real</p>
-                      <p className="text-sm font-semibold text-white">
-                        {r.margemReal != null ? `${r.margemReal.toFixed(1)}%` : "—"}
-                      </p>
+                  <div className="p-5">
+                    {/* Header do card */}
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-[#F1F5F9] truncate">
+                          {produto.name || "Produto sem nome"}
+                        </h3>
+                        <p className="text-xs text-[#475569] mt-0.5">{formatDate(produto.createdAt)}</p>
+                      </div>
+                      <span className={`ml-2 px-2 py-0.5 rounded text-xs font-bold ${
+                        classe === "A" ? "bg-[#0F2820] text-[#10B981]" :
+                        classe === "B" ? "bg-[#1C1A0F] text-[#F59E0B]" :
+                        "bg-[#1F0F0F] text-[#EF4444]"
+                      }`}>
+                        {classe}
+                      </span>
                     </div>
-                    <div className="bg-gray-800 rounded-lg px-3 py-2">
-                      <p className="text-xs text-gray-500 mb-0.5">Markup</p>
-                      <p className="text-sm font-semibold text-white">
-                        {r.markup != null ? `${r.markup.toFixed(2)}x` : "—"}
-                      </p>
-                    </div>
-                    <div className="bg-gray-800 rounded-lg px-3 py-2 col-span-2">
-                      <p className="text-xs text-gray-500 mb-0.5">Margem de Contribuição</p>
-                      <p className="text-sm font-semibold text-white">
-                        {currency(r.margemContribuicao)}
-                      </p>
-                    </div>
-                  </div>
 
-                  {/* Data */}
-                  <p className="text-xs text-gray-600">
-                    Salvo em {formatDate(produto.createdAt)}
-                  </p>
+                    {/* Preço em destaque */}
+                    <div className="mb-4">
+                      <p className="text-xs text-[#475569] uppercase tracking-wide mb-1">Preço Sugerido</p>
+                      <p className="text-2xl font-bold text-[#F1F5F9]">{formatCurrency(r.precoSugerido)}</p>
+                    </div>
 
-                  {/* Ações */}
-                  <div className="flex gap-2 pt-1">
-                    <button
-                      onClick={() => navigate(`/calculadora?id=${produto.id}`)}
-                      className="flex-1 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium transition"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => handleDelete(produto.id, produto.name)}
-                      className="flex-1 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-medium transition"
-                    >
-                      Excluir
-                    </button>
+                    {/* Métricas em grid 2x2 */}
+                    <div className="grid grid-cols-2 gap-2 mb-4">
+                      {[
+                        { label: "Margem", value: r.margemReal != null ? `${r.margemReal.toFixed(1)}%` : "—", color: "#F59E0B" },
+                        { label: "Markup", value: r.markup != null ? `${r.markup.toFixed(2)}x` : "—", color: "#3B82F6" },
+                        { label: "MC", value: formatCurrency(r.margemContribuicao), color: "#10B981" },
+                        { label: "CMV", value: formatCurrency(r.totalCmv ?? r.cmvTotal), color: "#64748B" },
+                      ].map((m) => (
+                        <div key={m.label} className="bg-[#0A0D14] rounded-lg p-2.5">
+                          <p className="text-[10px] text-[#475569] uppercase tracking-wide">{m.label}</p>
+                          <p className="text-sm font-semibold mt-0.5" style={{ color: m.color }}>{m.value}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Ações */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => navigate(`/calculadora?id=${produto.id}`)}
+                        className="flex-1 flex items-center justify-center gap-1.5 bg-[#0A0D14] hover:bg-[#1E293B] border border-[#1E293B] text-[#94A3B8] hover:text-[#F1F5F9] text-xs font-medium py-2 rounded-lg transition-all duration-150"
+                      >
+                        <Pencil size={12} />
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => handleDelete(produto.id, produto.name)}
+                        className="flex items-center justify-center gap-1.5 bg-[#0A0D14] hover:bg-[#1F0F0F] border border-[#1E293B] hover:border-[#EF4444] text-[#475569] hover:text-[#EF4444] text-xs font-medium py-2 px-3 rounded-lg transition-all duration-150"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
             })}
           </div>
         )}
+
       </div>
     </div>
   );
