@@ -2,16 +2,18 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { collection, onSnapshot } from "firebase/firestore";
 import SummaryCard from "../components/dashboard/SummaryCard";
+import { TrendingUp, DollarSign, Percent, Package, BarChart2 } from "lucide-react";
 import {
   BarChart,
   Bar,
   XAxis,
   YAxis,
   Tooltip,
+  CartesianGrid,
   ResponsiveContainer,
 } from "recharts";
 import { useAuth } from "../contexts/AuthContext";
-import { CLASS_BADGE, getMarginClass } from "../lib/business/classification";
+import { getMarginClass } from "../lib/business/classification";
 import {
   calculateDashboardStats,
   generateAlerts,
@@ -20,6 +22,12 @@ import {
 } from "../lib/business/dashboard";
 import { currency } from "../lib/formatters/currency";
 import { db } from "../lib/firebase";
+
+const CLASS_BADGE_STYLE = {
+  A: { backgroundColor: '#0F2820', color: '#10B981' },
+  B: { backgroundColor: '#1C1A0F', color: '#F59E0B' },
+  C: { backgroundColor: '#1F0F0F', color: '#EF4444' },
+};
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -46,23 +54,26 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <p className="text-gray-500 text-sm">Carregando...</p>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#0A0F1A' }}>
+        <p className="text-sm" style={{ color: '#475569' }}>Carregando...</p>
       </div>
     );
   }
 
   if (!produtos.length) {
     return (
-      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-8 text-center">
-        <div className="text-5xl mb-4">📊</div>
-        <h2 className="text-xl font-bold text-white mb-2">Nenhum dado ainda</h2>
-        <p className="text-gray-400 text-sm mb-6 max-w-xs">
+      <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center" style={{ backgroundColor: '#0A0F1A' }}>
+        <BarChart2 size={48} className="mb-4" style={{ color: '#1E293B' }} />
+        <h2 className="text-xl font-bold mb-2" style={{ color: '#F1F5F9' }}>Nenhum dado ainda</h2>
+        <p className="text-sm mb-6 max-w-xs" style={{ color: '#475569' }}>
           Cadastre seu primeiro produto na calculadora para ver os indicadores do negócio.
         </p>
         <button
           onClick={() => navigate("/calculadora")}
-          className="px-6 py-2.5 rounded-xl bg-green-500 hover:bg-green-600 text-white font-semibold text-sm transition"
+          className="px-6 py-2.5 rounded-xl font-semibold text-sm transition"
+          style={{ backgroundColor: '#10B981', color: '#fff' }}
+          onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#059669')}
+          onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#10B981')}
         >
           Ir para a Calculadora
         </button>
@@ -71,43 +82,41 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="bg-gray-950 p-4 md:p-8">
+    <div className="p-4 md:p-8" style={{ backgroundColor: '#0A0F1A', minHeight: '100vh' }}>
       <div className="max-w-5xl mx-auto">
-        <h1 className="text-2xl font-bold text-white mb-1">Dashboard</h1>
-        <p className="text-gray-400 text-sm mb-8">Visão geral do seu negócio</p>
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold" style={{ color: '#F1F5F9' }}>Dashboard</h1>
+          <p className="text-sm mt-1" style={{ color: '#64748B' }}>Visão geral do seu negócio</p>
+        </div>
 
         {/* Summary cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {[
-            { label: "Faturamento Potencial", value: currency(stats.faturamento), icon: "💰" },
-            { label: "Lucro Potencial", value: currency(stats.lucro), icon: "📈" },
-            { label: "Margem Média", value: `${stats.margemMedia.toFixed(1)}%`, icon: "🎯" },
-            { label: "Produtos Cadastrados", value: String(stats.total), icon: "📦" },
-          ].map(({ label, value, icon }) => (
-            <SummaryCard key={label} label={label} value={value} icon={icon} />
-          ))}
+          <SummaryCard label="Faturamento" value={currency(stats.faturamento)} icon={DollarSign} color="#10B981" />
+          <SummaryCard label="Lucro" value={currency(stats.lucro)} icon={TrendingUp} color="#3B82F6" />
+          <SummaryCard label="Margem Média" value={`${stats.margemMedia.toFixed(1)}%`} icon={Percent} color="#F59E0B" />
+          <SummaryCard label="Produtos" value={String(stats.total)} icon={Package} color="#8B5CF6" />
         </div>
 
         {/* Alerts */}
         {(alerts.low.length > 0 || alerts.noVol.length > 0) && (
           <div className="flex flex-col gap-3 mb-8">
             {alerts.low.length > 0 && (
-              <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 flex items-start gap-3">
-                <span className="text-red-400 text-lg shrink-0">⚠️</span>
+              <div className="border rounded-xl px-4 py-3 flex items-start gap-3" style={{ backgroundColor: 'rgba(239,68,68,0.08)', borderColor: 'rgba(239,68,68,0.25)' }}>
+                <span className="text-lg shrink-0" style={{ color: '#EF4444' }}>⚠️</span>
                 <div>
-                  <p className="text-red-400 text-sm font-semibold">Margem crítica</p>
-                  <p className="text-red-300/70 text-xs mt-0.5">
+                  <p className="text-sm font-semibold" style={{ color: '#EF4444' }}>Margem crítica</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'rgba(252,165,165,0.7)' }}>
                     {alerts.low.map((p) => p.name || "Produto").join(", ")} — margem real abaixo de 10%
                   </p>
                 </div>
               </div>
             )}
             {alerts.noVol.length > 0 && (
-              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl px-4 py-3 flex items-start gap-3">
-                <span className="text-yellow-400 text-lg shrink-0">📋</span>
+              <div className="border rounded-xl px-4 py-3 flex items-start gap-3" style={{ backgroundColor: 'rgba(245,158,11,0.08)', borderColor: 'rgba(245,158,11,0.25)' }}>
+                <span className="text-lg shrink-0" style={{ color: '#F59E0B' }}>📋</span>
                 <div>
-                  <p className="text-yellow-400 text-sm font-semibold">Volume não informado</p>
-                  <p className="text-yellow-300/70 text-xs mt-0.5">
+                  <p className="text-sm font-semibold" style={{ color: '#F59E0B' }}>Volume não informado</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'rgba(253,230,138,0.7)' }}>
                     {alerts.noVol.map((p) => p.name || "Produto").join(", ")} — sem volume estimado, faturamento não calculado
                   </p>
                 </div>
@@ -118,15 +127,16 @@ export default function Dashboard() {
 
         {/* Bar chart */}
         {chartData.length > 0 && (
-          <div className="bg-gray-900 rounded-2xl p-5 mb-8">
-            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">
+          <div className="rounded-2xl p-5 mb-8" style={{ backgroundColor: '#0F1623' }}>
+            <h2 className="text-xs font-semibold uppercase tracking-wider mb-5" style={{ color: '#475569' }}>
               Margem Real por Produto
             </h2>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={chartData} margin={{ top: 0, right: 0, bottom: 24, left: 0 }}>
+                <CartesianGrid stroke="#1E293B" strokeDasharray="0" vertical={false} />
                 <XAxis
                   dataKey="name"
-                  tick={{ fill: "#9ca3af", fontSize: 11 }}
+                  tick={{ fill: '#475569', fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
                   angle={-25}
@@ -134,7 +144,7 @@ export default function Dashboard() {
                   interval={0}
                 />
                 <YAxis
-                  tick={{ fill: "#6b7280", fontSize: 11 }}
+                  tick={{ fill: '#475569', fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
                   unit="%"
@@ -143,16 +153,22 @@ export default function Dashboard() {
                 <Tooltip
                   formatter={(v) => [`${v}%`, "Margem Real"]}
                   contentStyle={{
-                    backgroundColor: "#111827",
-                    border: "1px solid #374151",
+                    backgroundColor: '#1E293B',
+                    border: '1px solid #10B981',
                     borderRadius: 8,
                     fontSize: 12,
                   }}
-                  labelStyle={{ color: "#9ca3af" }}
-                  itemStyle={{ color: "#f3f4f6" }}
-                  cursor={{ fill: "rgba(255,255,255,0.04)" }}
+                  labelStyle={{ color: '#94A3B8' }}
+                  itemStyle={{ color: '#F1F5F9' }}
+                  cursor={{ fill: 'rgba(255,255,255,0.03)' }}
                 />
-                <Bar dataKey="margem" radius={[4, 4, 0, 0]} fill="#22c55e" />
+                <Bar
+                  dataKey="margem"
+                  radius={[4, 4, 0, 0]}
+                  fill="#10B981"
+                  fillOpacity={0.8}
+                  activeBar={{ fill: '#10B981', fillOpacity: 1 }}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -160,37 +176,46 @@ export default function Dashboard() {
 
         {/* Top 5 table */}
         {top5.length > 0 && (
-          <div className="bg-gray-900 rounded-2xl p-5">
-            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
+          <div className="rounded-2xl p-5" style={{ backgroundColor: '#0F1623' }}>
+            <h2 className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: '#475569' }}>
               Top 5 por Margem de Contribuição
             </h2>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-xs text-gray-500 border-b border-gray-800">
-                    <th className="text-left py-2 pr-4 font-medium">Produto</th>
-                    <th className="text-right py-2 pr-4 font-medium">Preço</th>
-                    <th className="text-right py-2 pr-4 font-medium">Margem</th>
-                    <th className="text-right py-2 font-medium">Classe</th>
+                  <tr style={{ borderBottom: '1px solid #1E293B' }}>
+                    <th className="text-left py-2 pr-4 font-medium uppercase" style={{ color: '#475569', fontSize: '11px' }}>Produto</th>
+                    <th className="text-right py-2 pr-4 font-medium uppercase" style={{ color: '#475569', fontSize: '11px' }}>Preço</th>
+                    <th className="text-right py-2 pr-4 font-medium uppercase" style={{ color: '#475569', fontSize: '11px' }}>Margem</th>
+                    <th className="text-right py-2 font-medium uppercase" style={{ color: '#475569', fontSize: '11px' }}>Classe</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-800">
+                <tbody>
                   {top5.map((p) => {
                     const r = p.results ?? {};
                     const cls = getMarginClass(r.margemReal ?? 0);
                     return (
-                      <tr key={p.id}>
-                        <td className="py-3 pr-4 text-white font-medium max-w-[140px] truncate">
+                      <tr
+                        key={p.id}
+                        style={{ borderBottom: '1px solid #1E293B' }}
+                        className="transition-colors duration-150"
+                        onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#0F1623')}
+                        onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+                      >
+                        <td className="py-3 pr-4 font-medium max-w-[140px] truncate" style={{ color: '#F1F5F9' }}>
                           {p.name || "—"}
                         </td>
-                        <td className="py-3 pr-4 text-right text-gray-300">
+                        <td className="py-3 pr-4 text-right" style={{ color: '#94A3B8' }}>
                           {currency(r.precoSugerido)}
                         </td>
-                        <td className="py-3 pr-4 text-right text-gray-300">
+                        <td className="py-3 pr-4 text-right" style={{ color: '#94A3B8' }}>
                           {r.margemReal != null ? `${r.margemReal.toFixed(1)}%` : "—"}
                         </td>
                         <td className="py-3 text-right">
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${CLASS_BADGE[cls]}`}>
+                          <span
+                            className="px-2 py-0.5 rounded-full text-xs font-semibold"
+                            style={CLASS_BADGE_STYLE[cls]}
+                          >
                             {cls}
                           </span>
                         </td>

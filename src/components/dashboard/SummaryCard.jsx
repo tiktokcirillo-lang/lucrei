@@ -1,9 +1,23 @@
-export default function SummaryCard({ label, value, icon }) {
+export default function SummaryCard({ label, value, icon: Icon, color }) {
   return (
-    <div className="bg-gray-900 rounded-2xl p-5">
-      <p className="text-xl mb-2">{icon}</p>
-      <p className="text-2xl font-bold text-white mb-1">{value}</p>
-      <p className="text-xs text-gray-400 leading-snug">{label}</p>
+    <div
+      className="rounded-xl border transition-all duration-200 cursor-default"
+      style={{ backgroundColor: '#0F1623', borderColor: '#1E293B', padding: '24px' }}
+      onMouseEnter={e => (e.currentTarget.style.borderColor = color)}
+      onMouseLeave={e => (e.currentTarget.style.borderColor = '#1E293B')}
+    >
+      <div className="flex items-center justify-between mb-4">
+        <Icon size={20} style={{ color }} />
+        <span
+          className="text-xs uppercase tracking-wide"
+          style={{ color: '#64748B' }}
+        >
+          {label}
+        </span>
+      </div>
+      <p className="font-bold leading-none" style={{ color: '#F1F5F9', fontSize: '32px' }}>
+        {value}
+      </p>
     </div>
   );
 }
