@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
+import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -14,11 +14,11 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// App Check com reCAPTCHA Enterprise — a chave é Enterprise (gerenciada no
-// console do Cloud / Fraud Defense), então precisa do provider Enterprise.
-// Usar o provider v3 clássico aqui resulta em 400 (appCheck/recaptcha-error).
+// App Check com reCAPTCHA v3 (tipo confirmado no admin da chave).
+// O enforcement deve ficar em monitoramento até o painel do App Check
+// mostrar tokens válidos chegando — só então religar para não derrubar login.
 initializeAppCheck(app, {
-  provider: new ReCaptchaEnterpriseProvider("6LcxCictAAAAACp012lv0cXt3QVbRCG1nLu7pU7t"),
+  provider: new ReCaptchaV3Provider("6LcxCictAAAAACp012lv0cXt3QVbRCG1nLu7pU7t"),
   isTokenAutoRefreshEnabled: true,
 });
 
