@@ -9,6 +9,11 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      workbox: {
+        // Não deixar o service worker servir index.html nas rotas do handler
+        // de autenticação do Firebase (reverse proxy para firebaseapp.com).
+        navigateFallbackDenylist: [/^\/__/],
+      },
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
         name: 'Lucrei',
