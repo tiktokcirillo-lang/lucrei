@@ -14,10 +14,14 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-initializeAppCheck(app, {
-  provider: new ReCaptchaV3Provider(import.meta.env.VITE_RECAPTCHA_SITE_KEY),
-  isTokenAutoRefreshEnabled: true,
-});
+// App Check — só inicializa se a chave estiver disponível
+const recaptchaKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+if (recaptchaKey) {
+  initializeAppCheck(app, {
+    provider: new ReCaptchaV3Provider(recaptchaKey),
+    isTokenAutoRefreshEnabled: true,
+  });
+}
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
