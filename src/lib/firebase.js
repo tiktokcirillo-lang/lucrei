@@ -19,7 +19,7 @@ const app = initializeApp(firebaseConfig);
 // com auth/internal-error. A chave do site precisa ter lucrei-alpha.vercel.app
 // nos domínios autorizados do reCAPTCHA.
 initializeAppCheck(app, {
-  provider: new ReCaptchaV3Provider("6Len0iYtAAAAAJkANk3A9lFXobJA8CRcdVKt1mHn"),
+  provider: new ReCaptchaV3Provider("6LcxCictAAAAACp012lv0cXt3QVbRCG1nLu7pU7t"),
   isTokenAutoRefreshEnabled: true,
 });
 
