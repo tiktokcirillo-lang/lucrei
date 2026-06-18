@@ -1,9 +1,12 @@
+const ALLOWED_MODEL = "claude-haiku-4-5-20251001";
+const MAX_TOKENS_LIMIT = 1024;
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // Verify Firebase Auth ID token before proxying to Anthropic
+  // Verify Firebase Auth ID token
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) {
     return res.status(401).json({ error: "Unauthorized" });
@@ -25,6 +28,17 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
+  // Validate and sanitize request body — prevent model/token abuse
+  const { model, max_tokens, messages } = req.body ?? {};
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return res.status(400).json({ error: "Invalid messages" });
+  }
+  const safeBody = {
+    model: ALLOWED_MODEL,
+    max_tokens: Math.min(Number(max_tokens) || MAX_TOKENS_LIMIT, MAX_TOKENS_LIMIT),
+    messages,
+  };
+
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -33,7 +47,7 @@ export default async function handler(req, res) {
         "x-api-key": process.env.ANTHROPIC_API_KEY,
         "anthropic-version": "2023-06-01",
       },
-      body: JSON.stringify(req.body),
+      body: JSON.stringify(safeBody),
     });
 
     const data = await response.json();
