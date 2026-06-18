@@ -2,18 +2,54 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Each user can only read and write their own subtree
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    function isAuthenticated() {
+      return request.auth != null;
+    }
 
-      match /{document=**} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // Dados do usuário — só o próprio dono acessa
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      match /products/{productId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /dre/{dreId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /simulations/{simulationId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /reports/{reportId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /ingredients/{ingredientId} {
+        allow read, write: if isOwner(userId);
       }
     }
 
-    // Deny everything else
-    match /{document=**} {
-      allow read, write: if false;
+    // Academia — qualquer usuário logado lê, só admin escreve
+    match /academy/{contentId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Admins — leitura autenticada, escrita só pelo console
+    match /admins/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
     }
   }
 }
