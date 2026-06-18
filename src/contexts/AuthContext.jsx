@@ -1,8 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import {
   onAuthStateChanged,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
   signOut
 } from "firebase/auth";
 import { auth, googleProvider, db } from "../lib/firebase";
@@ -16,8 +15,6 @@ export function AuthProvider({ children }) {
   const [hasCompany, setHasCompany] = useState(false);
 
   useEffect(() => {
-    getRedirectResult(auth).catch(() => {});
-
     let unsubDoc = null;
 
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
@@ -45,8 +42,19 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  const loginWithGoogle = () => {
-    return signInWithRedirect(auth, googleProvider);
+  const loginWithGoogle = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (err) {
+      // Expõe o erro real em vez de descartá-lo silenciosamente.
+      console.error("LOGIN ERROR:", err?.code, err?.message, err);
+      const detail =
+        err?.customData?._tokenResponse?.error_description ||
+        err?.message ||
+        String(err);
+      alert(`Erro no login\ncode: ${err?.code || "?"}\n${detail}`);
+      throw err;
+    }
   };
 
   const logout = () => signOut(auth);
