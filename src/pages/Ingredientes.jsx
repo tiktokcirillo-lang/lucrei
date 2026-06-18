@@ -11,7 +11,7 @@ import {
 } from "firebase/firestore";
 import { Camera, Carrot } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
-import { db } from "../lib/firebase";
+import { db, auth } from "../lib/firebase";
 
 const PURCHASE_UNITS = ["kg", "g", "L", "ml", "unidade", "dúzia", "pacote", "caixa"];
 
@@ -289,10 +289,12 @@ function ScanModal({ onClose, onImport }) {
     setAnalyzing(true);
     setError(null);
     try {
+      const idToken = await auth.currentUser.getIdToken();
       const res = await fetch("/api/anthropic", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${idToken}`,
         },
         body: JSON.stringify({
           model: "claude-haiku-4-5-20251001",
