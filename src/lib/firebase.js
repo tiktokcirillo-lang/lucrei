@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -12,6 +13,15 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+
+// App Check com reCAPTCHA v3 — exigido pelo enforcement ativo no console.
+// Sem isto, todas as requisições chegam sem token e o login é rejeitado
+// com auth/internal-error. A chave do site precisa ter lucrei-alpha.vercel.app
+// nos domínios autorizados do reCAPTCHA.
+initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider("6Len0iYtAAAAAJkANk3A9lFXobJA8CRcdVKt1mHn"),
+  isTokenAutoRefreshEnabled: true,
+});
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
