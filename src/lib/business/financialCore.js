@@ -66,6 +66,19 @@ function addRangeErrors(values, errors) {
       )
     );
   }
+
+  if (
+    values.volumeTotalMensalParaRateio != null &&
+    values.volumeTotalMensalParaRateio < 0
+  ) {
+    errors.push(
+      issue(
+        "NEGATIVE_VOLUME",
+        "volumeTotalMensalParaRateio",
+        "volumeTotalMensalParaRateio não pode ser negativo."
+      )
+    );
+  }
 }
 
 function emptyMetrics() {
@@ -77,6 +90,9 @@ function emptyMetrics() {
     taxaVariavelPct: null,
     margemOperacionalAlvoPct: null,
     custosFixosMensais: null,
+    volumeMensalEstimadoProduto: null,
+    volumeTotalMensalParaRateio: null,
+    fixedCostAllocationMethod: null,
     custoFixoRateadoPorUnidade: null,
     custoTotalUnitarioEstimado: null,
     precoSugerido: null,
@@ -93,10 +109,6 @@ function emptyMetrics() {
   };
 }
 
-function finiteOrNull(value) {
-  return Number.isFinite(value) ? value : null;
-}
-
 /**
  * Calcula preços, margens e ponto de equilíbrio sem arredondar valores intermediários.
  * Todas as taxas de entrada e métricas percentuais de saída usam pontos percentuais
@@ -106,6 +118,10 @@ function finiteOrNull(value) {
 export function calculateFinancialCore(input = {}) {
   const errors = [];
   const warnings = [];
+  const hasPortfolioAllocationVolume =
+    input.volumeTotalMensalParaRateio != null &&
+    !(typeof input.volumeTotalMensalParaRateio === "string" &&
+      input.volumeTotalMensalParaRateio.trim() === "");
   const outrosCustosVariaveisMonetariosInput =
     input.outrosCustosVariaveisMonetarios ?? input.custosVariaveisMonetarios;
   const values = {
@@ -123,6 +139,11 @@ export function calculateFinancialCore(input = {}) {
     volumeMensalEstimado: parseRequiredNumber(
       input.volumeMensalEstimado,
       "volumeMensalEstimado",
+      errors
+    ),
+    volumeTotalMensalParaRateio: parseOptionalNumber(
+      input.volumeTotalMensalParaRateio,
+      "volumeTotalMensalParaRateio",
       errors
     ),
     effectiveTaxRatePct: parseRequiredNumber(
@@ -145,16 +166,46 @@ export function calculateFinancialCore(input = {}) {
 
   addRangeErrors(values, errors);
 
+  const usesLegacyFixedCostAllocationFallback = !hasPortfolioAllocationVolume;
+  const volumeTotalMensalParaRateio = usesLegacyFixedCostAllocationFallback
+    ? values.volumeMensalEstimado
+    : values.volumeTotalMensalParaRateio;
+
+  if (usesLegacyFixedCostAllocationFallback) {
+    warnings.push(
+      issue(
+        "LEGACY_FIXED_COST_ALLOCATION_FALLBACK",
+        "volumeTotalMensalParaRateio",
+        "O volume total do portfólio não foi informado; foi usado o volume do produto como fallback legado."
+      )
+    );
+  }
+
   if (
     values.custosFixosMensais > 0 &&
-    values.volumeMensalEstimado != null &&
-    values.volumeMensalEstimado <= 0
+    volumeTotalMensalParaRateio != null &&
+    volumeTotalMensalParaRateio <= 0
   ) {
     errors.push(
       issue(
-        "VOLUME_REQUIRED_FOR_FIXED_COSTS",
-        "volumeMensalEstimado",
-        "O volume mensal deve ser maior que zero para ratear custos fixos."
+        "TOTAL_VOLUME_REQUIRED_FOR_FIXED_COSTS",
+        "volumeTotalMensalParaRateio",
+        "O volume total mensal do portfólio deve ser maior que zero para ratear custos fixos."
+      )
+    );
+  }
+
+  if (
+    volumeTotalMensalParaRateio != null &&
+    values.volumeMensalEstimado != null &&
+    volumeTotalMensalParaRateio >= 0 &&
+    volumeTotalMensalParaRateio < values.volumeMensalEstimado
+  ) {
+    errors.push(
+      issue(
+        "TOTAL_VOLUME_BELOW_PRODUCT_VOLUME",
+        "volumeTotalMensalParaRateio",
+        "O volume total mensal do portfólio não pode ser menor que o volume do produto atual."
       )
     );
   }
@@ -195,7 +246,7 @@ export function calculateFinancialCore(input = {}) {
   const custoFixoRateadoPorUnidade =
     values.custosFixosMensais === 0
       ? 0
-      : values.custosFixosMensais / values.volumeMensalEstimado;
+      : values.custosFixosMensais / volumeTotalMensalParaRateio;
   const custoTotalUnitarioEstimado =
     custosVariaveisMonetariosTotaisUnit + custoFixoRateadoPorUnidade;
 
@@ -291,6 +342,9 @@ export function calculateFinancialCore(input = {}) {
     taxaVariavelPct: values.taxaVariavelPct,
     margemOperacionalAlvoPct: values.margemOperacionalAlvoPct,
     custosFixosMensais: values.custosFixosMensais,
+    volumeMensalEstimadoProduto: values.volumeMensalEstimado,
+    volumeTotalMensalParaRateio,
+    fixedCostAllocationMethod: "unit_volume",
     custoFixoRateadoPorUnidade,
     custoTotalUnitarioEstimado,
     precoSugerido,
@@ -307,7 +361,9 @@ export function calculateFinancialCore(input = {}) {
   };
 
   for (const [key, value] of Object.entries(metrics)) {
-    metrics[key] = finiteOrNull(value);
+    if (typeof value === "number" && !Number.isFinite(value)) {
+      metrics[key] = null;
+    }
   }
 
   return { valid: errors.length === 0, errors, warnings, metrics };

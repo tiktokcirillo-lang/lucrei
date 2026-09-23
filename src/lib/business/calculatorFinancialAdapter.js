@@ -39,8 +39,42 @@ export function getFixedCostsTotal(company = {}) {
   );
 }
 
-export function buildFinancialCoreInput({ form = {}, company = {} } = {}) {
+export function getPortfolioAllocationContext({
+  products = [],
+  currentProductId = null,
+  currentVolume = 0,
+} = {}) {
+  let otherProductsVolume = 0;
+  let productsWithoutValidVolume = 0;
+
+  for (const product of products) {
+    if (currentProductId && product.id === currentProductId) continue;
+
+    const volume = toNumber(product?.inputs?.volumeEstimado);
+    if (volume > 0) {
+      otherProductsVolume += volume;
+    } else {
+      productsWithoutValidVolume += 1;
+    }
+  }
+
+  const parsedCurrentVolume = toNumber(currentVolume);
+
   return {
+    volumeTotalMensalParaRateio:
+      (parsedCurrentVolume > 0 ? parsedCurrentVolume : 0) + otherProductsVolume,
+    otherProductsVolume,
+    productsWithoutValidVolume,
+    hasProductsWithoutValidVolume: productsWithoutValidVolume > 0,
+  };
+}
+
+export function buildFinancialCoreInput({
+  form = {},
+  company = {},
+  volumeTotalMensalParaRateio,
+} = {}) {
+  const input = {
     cmv: sumFields(form, ["insumos", "embalagem", "freteEntrada"]),
     outrosCustosVariaveisMonetarios: sumFields(form, ["freteSaida", "cac"]),
     custosFixosMensais: getFixedCostsTotal(company),
@@ -56,12 +90,24 @@ export function buildFinancialCoreInput({ form = {}, company = {} } = {}) {
     ]),
     margemOperacionalAlvoPct: form.margem,
   };
+
+  if (isProvided(volumeTotalMensalParaRateio)) {
+    input.volumeTotalMensalParaRateio = toNumber(volumeTotalMensalParaRateio);
+  }
+
+  return input;
+}
+
+export function buildProductInputsPayload(form = {}) {
+  const canonicalInputs = { ...form };
+  delete canonicalInputs.taxaImpostosOverride;
+  return canonicalInputs;
 }
 
 export function buildFinancialResultsPayload(metrics) {
   return {
     ...metrics,
-    financialCoreVersion: 1,
+    financialCoreVersion: 2,
     precoSugerido: metrics.precoSugerido,
     precoMinimo: metrics.precoMinimoOperacional,
     margemReal: metrics.margemOperacionalEstimadaPct,
