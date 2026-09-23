@@ -3,6 +3,13 @@ import { useSearchParams } from "react-router-dom";
 import { doc, getDoc, collection, addDoc, updateDoc, onSnapshot, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "../contexts/AuthContext";
 import { db } from "../lib/firebase";
+import { calculateFinancialCore } from "../lib/business/financialCore";
+import {
+  buildFinancialCoreInput,
+  buildFinancialResultsPayload,
+  getFixedCostsTotal,
+  resolveProductTaxRateOverride,
+} from "../lib/business/calculatorFinancialAdapter";
 import {
   BarChart,
   Bar,
@@ -13,21 +20,37 @@ import {
 } from "recharts";
 import { FlaskConical, Save } from "lucide-react";
 
-const TAX_RATES = {
-  mei: 0.05,
-  simples: 0.08,
-  presumido: 0.1133,
-  real: 0.15,
-  unknown: 0.10,
-};
-
 const TAX_LABELS = {
   mei: "MEI",
   simples: "Simples Nacional",
   presumido: "Lucro Presumido",
   real: "Lucro Real",
-  unknown: "Estimativa padrão",
+  unknown: "Ainda não sei",
 };
+
+const FINANCIAL_FIELD_LABELS = {
+  cmv: "CMV",
+  outrosCustosVariaveisMonetarios: "outros custos variáveis monetários",
+  custosFixosMensais: "custos fixos mensais",
+  volumeMensalEstimado: "volume mensal estimado",
+  effectiveTaxRatePct: "alíquota efetiva",
+  taxaVariavelPct: "taxas variáveis sobre a venda",
+  margemOperacionalAlvoPct: "margem operacional alvo",
+  precoVenda: "preço de venda",
+};
+
+function getFinancialMessage(error) {
+  if (error.code === "REQUIRED_VALUE" && error.field === "effectiveTaxRatePct") {
+    return "Informe sua alíquota efetiva para calcular o preço corretamente.";
+  }
+
+  if (error.code === "REQUIRED_VALUE" && error.field === "margemOperacionalAlvoPct") {
+    return "Informe a margem operacional alvo.";
+  }
+
+  const fieldLabel = FINANCIAL_FIELD_LABELS[error.field];
+  return fieldLabel ? error.message.replace(error.field, fieldLabel) : error.message;
+}
 
 function num(s) {
   const n = parseFloat(String(s).replace(",", "."));
@@ -315,6 +338,7 @@ export default function Calculadora() {
     cac: "",
     provisaoDevolucoes: "",
     volumeEstimado: "",
+    effectiveTaxRatePctOverride: "",
     taxaImpostosOverride: "",
     margem: "30",
   });
@@ -336,90 +360,68 @@ export default function Calculadora() {
     getDoc(doc(db, "users", user.uid, "products", productId)).then((snap) => {
       if (!snap.exists()) return;
       const inputs = snap.data().inputs;
-      if (inputs) setForm(inputs);
+      if (inputs) {
+        setForm((current) => ({
+          ...current,
+          ...inputs,
+          effectiveTaxRatePctOverride: resolveProductTaxRateOverride(inputs),
+        }));
+      }
       setEditMode(true);
       setEditId(productId);
     });
   }, [user, productId]);
 
   const taxRegime = companyData?.taxRegime || "unknown";
-  const defaultTaxRate = TAX_RATES[taxRegime] ?? 0.10;
-  const taxRate =
-    form.taxaImpostosOverride !== ""
-      ? num(form.taxaImpostosOverride) / 100
-      : defaultTaxRate;
 
-  const fixedCostsTotal = useMemo(() => {
-    if (!companyData?.fixedCosts) return 0;
-    return Object.values(companyData.fixedCosts).reduce((a, b) => a + (b || 0), 0);
-  }, [companyData]);
+  const fixedCostsTotal = useMemo(() => getFixedCostsTotal(companyData), [companyData]);
+  const financialCoreInput = useMemo(
+    () => buildFinancialCoreInput({ form, company: companyData }),
+    [form, companyData]
+  );
+  const financialResult = useMemo(
+    () => calculateFinancialCore(financialCoreInput),
+    [financialCoreInput]
+  );
+  const financialMetrics = financialResult.metrics;
+  const financialErrors = financialResult.errors.map(getFinancialMessage);
+  const financialWarnings = financialResult.warnings.map(getFinancialMessage);
 
-  const cmv = num(form.insumos) + num(form.embalagem) + num(form.freteEntrada);
-  const custoVariavelR = num(form.freteSaida) + num(form.cac);
-  const taxaVariavelPct =
-    (num(form.taxaPlataforma) + num(form.taxaGateway) + num(form.provisaoDevolucoes)) / 100;
-  const volume = num(form.volumeEstimado);
-  const custoFixoUnidade = volume > 0 ? fixedCostsTotal / volume : 0;
-  const ctu = cmv + custoVariavelR + custoFixoUnidade;
-  const margem = num(form.margem) / 100;
-
-  const denomSugerido = 1 - taxRate - taxaVariavelPct - margem;
-  const denomMinimo = 1 - taxRate - taxaVariavelPct;
-
-  const precoSugerido = denomSugerido > 0 && ctu > 0 ? ctu / denomSugerido : null;
-  const precoMinimo = denomMinimo > 0 && ctu > 0 ? ctu / denomMinimo : null;
-
-  const margemReal =
-    precoSugerido != null
-      ? ((precoSugerido - ctu - precoSugerido * taxRate - precoSugerido * taxaVariavelPct) /
-          precoSugerido) *
-        100
-      : null;
-
-  const markup =
-    precoSugerido != null && ctu > 0 ? precoSugerido / ctu : null;
-
-  const margemContribuicao =
-    precoSugerido != null
-      ? precoSugerido * (1 - taxRate - taxaVariavelPct) - cmv - custoVariavelR
-      : null;
-
-  const pontoEquilibrio =
-    margemContribuicao != null && margemContribuicao > 0
-      ? Math.ceil(fixedCostsTotal / margemContribuicao)
-      : null;
+  const cmv = financialCoreInput.cmv;
+  const volume = financialCoreInput.volumeMensalEstimado;
+  const {
+    precoSugerido,
+    precoMinimoOperacional,
+    precoPisoVariavel,
+    margemOperacionalEstimadaPct,
+    markupSobreCustoTotal,
+    margemContribuicaoUnit,
+    pontoEquilibrioUnidades,
+    custoFixoRateadoPorUnidade,
+  } = financialMetrics;
 
   const chartData =
-    precoSugerido != null
+    financialResult.valid && precoSugerido > 0
       ? [
           {
             name: "Composição",
-            CMV: (cmv / precoSugerido) * 100,
-            Variáveis: (custoVariavelR / precoSugerido) * 100,
-            Fixos: (custoFixoUnidade / precoSugerido) * 100,
-            "Taxas Venda": taxaVariavelPct * 100,
-            Impostos: taxRate * 100,
-            Lucro: margem * 100,
+            CMV: (financialMetrics.cmvUnitario / precoSugerido) * 100,
+            Variáveis:
+              (financialMetrics.outrosCustosVariaveisMonetariosUnit / precoSugerido) * 100,
+            Fixos: (financialMetrics.custoFixoRateadoPorUnidade / precoSugerido) * 100,
+            "Taxas Venda": financialMetrics.taxaVariavelPct,
+            Impostos: financialMetrics.effectiveTaxRatePct,
+            "Resultado Operacional Alvo": financialMetrics.margemOperacionalEstimadaPct,
           },
         ]
       : [];
 
-  const resultPayload = {
-    precoMinimo,
-    precoSugerido,
-    margemReal,
-    markup,
-    margemContribuicao,
-    pontoEquilibrio,
-    cmv,
-    custoVariavelR,
-    custoFixoUnidade,
-    ctu,
-    taxRatePct: taxRate * 100,
-  };
+  const resultPayload = financialResult.valid
+    ? buildFinancialResultsPayload(financialMetrics)
+    : null;
 
   async function handleSave() {
-    if (!precoSugerido) return;
+    if (!financialResult.valid || !resultPayload) return;
     setSaving(true);
     try {
       if (editMode) {
@@ -446,11 +448,41 @@ export default function Calculadora() {
   }
 
   const metrics = [
-    { label: "Preço Mínimo", value: precoMinimo != null ? currency(precoMinimo) : "—", color: "#64748B" },
-    { label: "Margem Real", value: margemReal != null ? pct(margemReal) : "—", color: "#F59E0B" },
-    { label: "Markup", value: markup != null ? `${markup.toFixed(2)}x` : "—", color: "#3B82F6" },
-    { label: "Margem de Contribuição", value: margemContribuicao != null ? currency(margemContribuicao) : "—", color: "#10B981" },
-    { label: "Ponto de Equilíbrio", value: pontoEquilibrio != null ? `${pontoEquilibrio} un/mês` : "—", color: "#8B5CF6" },
+    {
+      label: "Preço Piso Variável",
+      hint: "Não cobre custos fixos",
+      value: precoPisoVariavel != null ? currency(precoPisoVariavel) : "—",
+      color: "#64748B",
+    },
+    {
+      label: "Preço Mínimo Operacional",
+      hint: "Inclui o rateio dos fixos",
+      value: precoMinimoOperacional != null ? currency(precoMinimoOperacional) : "—",
+      color: "#64748B",
+    },
+    {
+      label: "Margem Operacional Estimada",
+      value:
+        margemOperacionalEstimadaPct != null ? pct(margemOperacionalEstimadaPct) : "—",
+      color: "#F59E0B",
+    },
+    {
+      label: "Markup",
+      value:
+        markupSobreCustoTotal != null ? `${markupSobreCustoTotal.toFixed(2)}x` : "—",
+      color: "#3B82F6",
+    },
+    {
+      label: "Margem de Contribuição",
+      value: margemContribuicaoUnit != null ? currency(margemContribuicaoUnit) : "—",
+      color: "#10B981",
+    },
+    {
+      label: "Ponto de Equilíbrio",
+      value:
+        pontoEquilibrioUnidades != null ? `${pontoEquilibrioUnidades} un/mês` : "—",
+      color: "#8B5CF6",
+    },
   ];
 
   return (
@@ -477,9 +509,39 @@ export default function Calculadora() {
                 {precoSugerido != null ? currency(precoSugerido) : "—"}
               </p>
               <p className="text-[#64748B] text-sm">
-                com {num(form.margem).toFixed(1)}% de margem
+                com {num(form.margem).toFixed(1)}% de margem operacional alvo
               </p>
             </div>
+
+            {financialErrors.length > 0 && (
+              <div className="bg-[#EF4444]/10 border border-[#EF4444]/30 rounded-xl p-4 mb-4">
+                <p className="text-[#EF4444] text-xs font-semibold uppercase tracking-wider mb-2">
+                  Revise os dados
+                </p>
+                <ul className="flex flex-col gap-1.5">
+                  {[...new Set(financialErrors)].map((message) => (
+                    <li key={message} className="text-[#FCA5A5] text-xs leading-relaxed">
+                      {message}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {financialWarnings.length > 0 && (
+              <div className="bg-[#F59E0B]/10 border border-[#F59E0B]/30 rounded-xl p-4 mb-4">
+                <p className="text-[#F59E0B] text-xs font-semibold uppercase tracking-wider mb-2">
+                  Atenção
+                </p>
+                <ul className="flex flex-col gap-1.5">
+                  {[...new Set(financialWarnings)].map((message) => (
+                    <li key={message} className="text-[#FCD34D] text-xs leading-relaxed">
+                      {message}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {/* Métricas secundárias */}
             <div className="bg-[#0F1623] border border-[#1E293B] rounded-xl p-4 mb-4">
@@ -488,7 +550,14 @@ export default function Calculadora() {
                   key={item.label}
                   className={`flex items-center justify-between py-2.5 ${i < metrics.length - 1 ? "border-b border-[#1E293B]" : ""}`}
                 >
-                  <span className="text-xs text-[#64748B]">{item.label}</span>
+                  <span className="pr-3">
+                    <span className="block text-xs text-[#64748B]">{item.label}</span>
+                    {item.hint && (
+                      <span className="block text-[10px] text-[#475569] mt-0.5">
+                        {item.hint}
+                      </span>
+                    )}
+                  </span>
                   <span className="text-sm font-semibold" style={{ color: item.color }}>
                     {item.value}
                   </span>
@@ -524,9 +593,14 @@ export default function Calculadora() {
                     <Bar dataKey="CMV" stackId="a" fill="#EF4444" />
                     <Bar dataKey="Variáveis" stackId="a" fill="#F59E0B" />
                     <Bar dataKey="Fixos" stackId="a" fill="#3B82F6" />
-                    <Bar dataKey="Taxas Venda" stackId="a" fill="#8B5CF6" />
+                    <Bar dataKey="Taxas Venda" stackId="a" fill="#A855F7" />
                     <Bar dataKey="Impostos" stackId="a" fill="#8B5CF6" />
-                    <Bar dataKey="Lucro" stackId="a" fill="#10B981" radius={[0, 4, 4, 0]} />
+                    <Bar
+                      dataKey="Resultado Operacional Alvo"
+                      stackId="a"
+                      fill="#10B981"
+                      radius={[0, 4, 4, 0]}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
                 <div className="flex flex-wrap gap-x-3 gap-y-1.5 mt-3">
@@ -534,8 +608,9 @@ export default function Calculadora() {
                     { label: "CMV", color: "#EF4444" },
                     { label: "Variáveis", color: "#F59E0B" },
                     { label: "Fixos", color: "#3B82F6" },
+                    { label: "Taxas Venda", color: "#A855F7" },
                     { label: "Impostos", color: "#8B5CF6" },
-                    { label: "Lucro", color: "#10B981" },
+                    { label: "Resultado Operacional Alvo", color: "#10B981" },
                   ].map(({ label, color }) => (
                     <div key={label} className="flex items-center gap-1.5">
                       <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
@@ -549,7 +624,7 @@ export default function Calculadora() {
             {/* Botão salvar */}
             <button
               onClick={handleSave}
-              disabled={saving || precoSugerido == null}
+              disabled={saving || !financialResult.valid}
               className="w-full bg-[#10B981] hover:bg-[#059669] disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-xl transition-all duration-150 flex items-center justify-center gap-2"
             >
               <Save size={16} />
@@ -636,29 +711,53 @@ export default function Calculadora() {
               <ReadonlyRow label="Custo fixo mensal total" value={currency(fixedCostsTotal)} />
               <ReadonlyRow
                 label="Custo fixo por unidade"
-                value={volume > 0 ? currency(custoFixoUnidade) : "—"}
+                value={
+                  volume > 0 && custoFixoRateadoPorUnidade != null
+                    ? currency(custoFixoRateadoPorUnidade)
+                    : "—"
+                }
                 highlight
               />
             </Section>
 
             <Section title="Impostos">
               <ReadonlyRow label="Regime tributário" value={TAX_LABELS[taxRegime]} />
-              <ReadonlyRow label="Alíquota padrão" value={`${(defaultTaxRate * 100).toFixed(2)}%`} />
-              <Field label="Ajuste manual da alíquota (opcional)">
+              <ReadonlyRow
+                label="Alíquota efetiva da empresa"
+                value={
+                  companyData?.effectiveTaxRatePct !== "" &&
+                  companyData?.effectiveTaxRatePct != null
+                    ? pct(num(companyData.effectiveTaxRatePct))
+                    : "Não informada"
+                }
+              />
+              <Field label="Alíquota específica do produto (opcional)">
                 <RInput
                   prefix="%"
-                  value={form.taxaImpostosOverride}
-                  onChange={(v) => setF("taxaImpostosOverride", v)}
-                  placeholder={`${(defaultTaxRate * 100).toFixed(2)} (padrão)`}
+                  value={form.effectiveTaxRatePctOverride}
+                  onChange={(v) =>
+                    setForm((current) => ({
+                      ...current,
+                      effectiveTaxRatePctOverride: v,
+                      taxaImpostosOverride: "",
+                    }))
+                  }
+                  placeholder={
+                    companyData?.effectiveTaxRatePct !== "" &&
+                    companyData?.effectiveTaxRatePct != null
+                      ? `${num(companyData.effectiveTaxRatePct).toFixed(2)} (empresa)`
+                      : "Informe aqui ou nas configurações"
+                  }
                 />
               </Field>
               <p className="text-xs text-[#475569]">
-                Deixe em branco para usar a alíquota padrão do seu regime.
+                A alíquota do produto tem prioridade sobre a alíquota da empresa. O regime
+                tributário é apenas informativo e não gera uma taxa automática.
               </p>
             </Section>
 
-            <Section title="Margem de Lucro">
-              <Field label="Margem desejada">
+            <Section title="Resultado Operacional">
+              <Field label="Margem operacional alvo">
                 <RInput prefix="%" value={form.margem} onChange={(v) => setF("margem", v)} placeholder="30" />
               </Field>
             </Section>

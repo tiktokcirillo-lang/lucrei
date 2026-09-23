@@ -61,6 +61,7 @@ export default function Configuracoes() {
     productType: "Produto Físico",
     salesChannel: "",
     taxRegime: "",
+    effectiveTaxRatePct: "",
     fixedCosts: {
       rent: "",
       employees: "",
@@ -82,6 +83,7 @@ export default function Configuracoes() {
         productType: c.productType || "Produto Físico",
         salesChannel: c.salesChannel || "",
         taxRegime: c.taxRegime || "",
+        effectiveTaxRatePct: c.effectiveTaxRatePct ?? "",
         fixedCosts: {
           rent: c.fixedCosts?.rent ?? "",
           employees: c.fixedCosts?.employees ?? "",
@@ -109,11 +111,14 @@ export default function Configuracoes() {
       for (const { key } of FIXED_COST_FIELDS) {
         costs[key] = parseFloat(form.fixedCosts[key]) || 0;
       }
+      const effectiveTaxRatePct =
+        form.effectiveTaxRatePct === "" ? "" : parseFloat(form.effectiveTaxRatePct);
       await updateDoc(doc(db, "users", user.uid), {
         "company.name": form.companyName.trim(),
         "company.productType": form.productType,
         "company.salesChannel": form.salesChannel,
         "company.taxRegime": form.taxRegime,
+        "company.effectiveTaxRatePct": effectiveTaxRatePct,
         "company.fixedCosts": costs,
       });
       setToast(true);
@@ -188,6 +193,28 @@ export default function Configuracoes() {
                 <option key={r.value} value={r.value}>{r.label}</option>
               ))}
             </select>
+          </Field>
+
+          <Field label="Alíquota efetiva sobre vendas (%)">
+            <div className="relative">
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                value={form.effectiveTaxRatePct}
+                onChange={(e) => setField("effectiveTaxRatePct", e.target.value)}
+                placeholder="Ex: 8,00"
+                className={`${inputCls} pr-10`}
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#475569] text-sm select-none pointer-events-none">
+                %
+              </span>
+            </div>
+            <p className="text-xs text-[#475569] mt-2 leading-relaxed">
+              Informe a alíquota efetiva utilizada no seu negócio. Consulte seu contador caso
+              tenha dúvida. O Lucrei não calcula tributos automaticamente.
+            </p>
           </Field>
         </Section>
 
