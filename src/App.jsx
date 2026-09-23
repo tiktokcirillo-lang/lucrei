@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
-import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { AuthProvider } from "./contexts/AuthProvider";
+import { useAuth } from "./contexts/AuthContext";
 import PrivateRoute from "./components/PrivateRoute";
 import Layout from "./components/Layout";
 

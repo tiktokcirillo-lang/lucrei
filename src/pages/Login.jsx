@@ -26,7 +26,7 @@ export default function Login() {
 
   useEffect(() => {
     if (user) navigate("/");
-  }, [user]);
+  }, [user, navigate]);
 
   return (
     <div className="min-h-screen flex">

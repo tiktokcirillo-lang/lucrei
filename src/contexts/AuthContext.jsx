@@ -1,58 +1,13 @@
-import { createContext, useContext, useEffect, useState } from "react";
-import {
-  onAuthStateChanged,
-  signInWithPopup,
-  signOut
-} from "firebase/auth";
-import { auth, googleProvider, db } from "../lib/firebase";
-import { doc, onSnapshot } from "firebase/firestore";
+import { createContext, useContext } from "react";
 
-const AuthContext = createContext();
+export const AuthContext = createContext(null);
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [hasCompany, setHasCompany] = useState(false);
+export function useAuth() {
+  const context = useContext(AuthContext);
 
-  useEffect(() => {
-    let unsubDoc = null;
+  if (!context) {
+    throw new Error("useAuth must be used within AuthProvider");
+  }
 
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      if (unsubDoc) {
-        unsubDoc();
-        unsubDoc = null;
-      }
-
-      if (firebaseUser) {
-        setUser(firebaseUser);
-        unsubDoc = onSnapshot(doc(db, "users", firebaseUser.uid), (snap) => {
-          setHasCompany(snap.exists() && !!snap.data()?.company);
-          setLoading(false);
-        });
-      } else {
-        setUser(null);
-        setHasCompany(false);
-        setLoading(false);
-      }
-    });
-
-    return () => {
-      unsubscribe();
-      if (unsubDoc) unsubDoc();
-    };
-  }, []);
-
-  const loginWithGoogle = () => {
-    return signInWithPopup(auth, googleProvider);
-  };
-
-  const logout = () => signOut(auth);
-
-  return (
-    <AuthContext.Provider value={{ user, loading, hasCompany, loginWithGoogle, logout }}>
-      {!loading && children}
-    </AuthContext.Provider>
-  );
+  return context;
 }
-
-export const useAuth = () => useContext(AuthContext);

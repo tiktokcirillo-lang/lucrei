@@ -14,10 +14,11 @@ export default defineConfig({
         // de autenticação do Firebase (reverse proxy para firebaseapp.com).
         navigateFallbackDenylist: [/^\/__/],
       },
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
+      includeAssets: ['favicon.svg', 'icons/icon-192.png', 'icons/icon-512.png'],
       manifest: {
         name: 'Lucrei',
         short_name: 'Lucrei',
+        lang: 'pt-BR',
         description: 'Precifique certo, lucre de verdade.',
         theme_color: '#22c55e',
         background_color: '#0a0e10',
