@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { calculateFinancialCore } from "./financialCore";
 import {
   buildFinancialCoreInput,
+  buildProductInputsPayload,
   buildFinancialResultsPayload,
+  getPortfolioAllocationContext,
   resolveEffectiveTaxRatePct,
   resolveProductTaxRateOverride,
 } from "./calculatorFinancialAdapter";
@@ -30,7 +32,11 @@ const company = {
 
 describe("calculator financial adapter", () => {
   it("usa a alíquota efetiva cadastrada na empresa", () => {
-    const input = buildFinancialCoreInput({ form: baseForm, company });
+    const input = buildFinancialCoreInput({
+      form: baseForm,
+      company,
+      volumeTotalMensalParaRateio: 100,
+    });
 
     expect(input.effectiveTaxRatePct).toBe(8);
     expect(calculateFinancialCore(input).metrics.effectiveTaxRatePct).toBe(8);
@@ -83,13 +89,18 @@ describe("calculator financial adapter", () => {
   });
 
   it("mapeia os campos atuais para o contrato do Financial Core", () => {
-    const input = buildFinancialCoreInput({ form: baseForm, company });
+    const input = buildFinancialCoreInput({
+      form: baseForm,
+      company,
+      volumeTotalMensalParaRateio: 100,
+    });
 
     expect(input).toEqual({
       cmv: 25,
       outrosCustosVariaveisMonetarios: 5,
       custosFixosMensais: 2000,
       volumeMensalEstimado: 100,
+      volumeTotalMensalParaRateio: 100,
       effectiveTaxRatePct: 8,
       taxaVariavelPct: 8,
       margemOperacionalAlvoPct: "20",
@@ -98,11 +109,17 @@ describe("calculator financial adapter", () => {
 
   it("preserva aliases antigos coerentes com as métricas canônicas", () => {
     const { metrics } = calculateFinancialCore(
-      buildFinancialCoreInput({ form: baseForm, company })
+      buildFinancialCoreInput({
+        form: baseForm,
+        company,
+        volumeTotalMensalParaRateio: 100,
+      })
     );
     const payload = buildFinancialResultsPayload(metrics);
 
-    expect(payload.financialCoreVersion).toBe(1);
+    expect(payload.financialCoreVersion).toBe(2);
+    expect(payload.fixedCostAllocationMethod).toBe("unit_volume");
+    expect(payload.volumeTotalMensalParaRateio).toBe(100);
     expect(payload.precoMinimo).toBe(metrics.precoMinimoOperacional);
     expect(payload.margemReal).toBe(metrics.margemOperacionalEstimadaPct);
     expect(payload.markup).toBe(metrics.markupSobreCustoTotal);
@@ -114,5 +131,71 @@ describe("calculator financial adapter", () => {
     expect(payload.ctu).toBe(metrics.custoTotalUnitarioEstimado);
     expect(payload.taxRatePct).toBe(metrics.effectiveTaxRatePct);
     expect(payload.precoPisoVariavel).toBe(metrics.precoPisoVariavel);
+  });
+
+  it("soma um novo produto ao volume dos produtos já cadastrados", () => {
+    const context = getPortfolioAllocationContext({
+      products: [
+        { id: "a", inputs: { volumeEstimado: "100" } },
+        { id: "b", inputs: { volumeEstimado: 50 } },
+      ],
+      currentVolume: "25",
+    });
+
+    expect(context.volumeTotalMensalParaRateio).toBe(175);
+    expect(context.otherProductsVolume).toBe(150);
+  });
+
+  it("exclui o volume antigo do produto durante a edição", () => {
+    const context = getPortfolioAllocationContext({
+      products: [
+        { id: "a", inputs: { volumeEstimado: 100 } },
+        { id: "b", inputs: { volumeEstimado: 80 } },
+      ],
+      currentProductId: "a",
+      currentVolume: 120,
+    });
+
+    expect(context.volumeTotalMensalParaRateio).toBe(200);
+    expect(context.otherProductsVolume).toBe(80);
+  });
+
+  it("soma três produtos válidos no portfólio", () => {
+    const context = getPortfolioAllocationContext({
+      products: [
+        { id: "a", inputs: { volumeEstimado: 100 } },
+        { id: "b", inputs: { volumeEstimado: 150 } },
+      ],
+      currentVolume: 50,
+    });
+
+    expect(context.volumeTotalMensalParaRateio).toBe(300);
+  });
+
+  it("ignora produtos sem volume válido e sinaliza a base incompleta", () => {
+    const context = getPortfolioAllocationContext({
+      products: [
+        { id: "valid", inputs: { volumeEstimado: "100" } },
+        { id: "empty", inputs: { volumeEstimado: "" } },
+        { id: "invalid", inputs: { volumeEstimado: "abc" } },
+        { id: "missing", inputs: {} },
+      ],
+      currentVolume: 50,
+    });
+
+    expect(context.volumeTotalMensalParaRateio).toBe(150);
+    expect(context.productsWithoutValidVolume).toBe(3);
+    expect(context.hasProductsWithoutValidVolume).toBe(true);
+  });
+
+  it("remove o override tributário legado do payload salvo", () => {
+    const inputs = buildProductInputsPayload({
+      ...baseForm,
+      effectiveTaxRatePctOverride: "12",
+      taxaImpostosOverride: "9",
+    });
+
+    expect(inputs.effectiveTaxRatePctOverride).toBe("12");
+    expect(inputs).not.toHaveProperty("taxaImpostosOverride");
   });
 });

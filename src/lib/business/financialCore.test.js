@@ -6,6 +6,7 @@ const baseInput = {
   outrosCustosVariaveisMonetarios: 5,
   custosFixosMensais: 2000,
   volumeMensalEstimado: 100,
+  volumeTotalMensalParaRateio: 100,
   effectiveTaxRatePct: 8,
   taxaVariavelPct: 8,
   margemOperacionalAlvoPct: 20,
@@ -13,7 +14,7 @@ const baseInput = {
 
 function expectOnlyFiniteNumbersOrNull(metrics) {
   for (const value of Object.values(metrics)) {
-    expect(value === null || Number.isFinite(value)).toBe(true);
+    expect(value === null || typeof value === "string" || Number.isFinite(value)).toBe(true);
   }
 }
 
@@ -43,6 +44,7 @@ describe("calculateFinancialCore", () => {
       ...baseInput,
       custosFixosMensais: 0,
       volumeMensalEstimado: 0,
+      volumeTotalMensalParaRateio: 0,
     });
 
     expect(result.valid).toBe(true);
@@ -57,6 +59,7 @@ describe("calculateFinancialCore", () => {
       ...baseInput,
       custosFixosMensais: 900,
       volumeMensalEstimado: 300,
+      volumeTotalMensalParaRateio: 300,
     });
 
     expect(result.valid).toBe(true);
@@ -64,12 +67,16 @@ describe("calculateFinancialCore", () => {
     expect(result.metrics.custoTotalUnitarioEstimado).toBeCloseTo(33);
   });
 
-  it("rejeita volume zero quando há custos fixos a ratear", () => {
-    const result = calculateFinancialCore({ ...baseInput, volumeMensalEstimado: 0 });
+  it("rejeita volume total zero quando há custos fixos a ratear", () => {
+    const result = calculateFinancialCore({
+      ...baseInput,
+      volumeMensalEstimado: 0,
+      volumeTotalMensalParaRateio: 0,
+    });
 
     expect(result.valid).toBe(false);
     expect(result.errors.map((error) => error.code)).toContain(
-      "VOLUME_REQUIRED_FOR_FIXED_COSTS"
+      "TOTAL_VOLUME_REQUIRED_FOR_FIXED_COSTS"
     );
     expectOnlyFiniteNumbersOrNull(result.metrics);
   });
@@ -107,6 +114,7 @@ describe("calculateFinancialCore", () => {
       ...baseInput,
       custosFixosMensais: 0,
       volumeMensalEstimado: 0,
+      volumeTotalMensalParaRateio: 0,
       precoVenda: 50,
     });
 
@@ -142,6 +150,7 @@ describe("calculateFinancialCore", () => {
       outrosCustosVariaveisMonetarios: 0,
       custosFixosMensais: 0,
       volumeMensalEstimado: 0,
+      volumeTotalMensalParaRateio: 0,
       effectiveTaxRatePct: 0,
       taxaVariavelPct: 0,
       margemOperacionalAlvoPct: 0,
@@ -162,6 +171,7 @@ describe("calculateFinancialCore", () => {
       outrosCustosVariaveisMonetarios: "5",
       custosFixosMensais: "2000",
       volumeMensalEstimado: "100",
+      volumeTotalMensalParaRateio: "100",
       effectiveTaxRatePct: "8",
       taxaVariavelPct: "8,0",
       margemOperacionalAlvoPct: "20",
@@ -214,7 +224,7 @@ describe("calculateFinancialCore", () => {
   it("garante que cenários inválidos nunca retornem NaN ou Infinity", () => {
     const scenarios = [
       { ...baseInput, cmv: "não é número" },
-      { ...baseInput, volumeMensalEstimado: 0 },
+      { ...baseInput, volumeMensalEstimado: 0, volumeTotalMensalParaRateio: 0 },
       { ...baseInput, margemOperacionalAlvoPct: 100 },
       { ...baseInput, taxaVariavelPct: 99, effectiveTaxRatePct: 1 },
       { ...baseInput, precoVenda: 0 },
@@ -223,5 +233,66 @@ describe("calculateFinancialCore", () => {
     for (const scenario of scenarios) {
       expectOnlyFiniteNumbersOrNull(calculateFinancialCore(scenario).metrics);
     }
+  });
+
+  it("mantém o comportamento de produto único com a base total igual ao volume do produto", () => {
+    const result = calculateFinancialCore(baseInput);
+
+    expect(result.valid).toBe(true);
+    expect(result.warnings).toEqual([]);
+    expect(result.metrics.custoFixoRateadoPorUnidade).toBeCloseTo(20);
+    expect(result.metrics.volumeMensalEstimadoProduto).toBe(100);
+    expect(result.metrics.volumeTotalMensalParaRateio).toBe(100);
+    expect(result.metrics.fixedCostAllocationMethod).toBe("unit_volume");
+  });
+
+  it("rateia custos fixos de dois produtos pelo volume total sem dupla alocação", () => {
+    const result = calculateFinancialCore({
+      ...baseInput,
+      volumeMensalEstimado: 100,
+      volumeTotalMensalParaRateio: 200,
+    });
+
+    expect(result.valid).toBe(true);
+    expect(result.metrics.custoFixoRateadoPorUnidade).toBeCloseTo(10);
+  });
+
+  it("rateia custos fixos em um portfólio de três produtos", () => {
+    const result = calculateFinancialCore({
+      ...baseInput,
+      custosFixosMensais: 2400,
+      volumeMensalEstimado: 100,
+      volumeTotalMensalParaRateio: 400,
+    });
+
+    expect(result.valid).toBe(true);
+    expect(result.metrics.custoFixoRateadoPorUnidade).toBeCloseTo(6);
+  });
+
+  it("rejeita base total menor que o volume do próprio produto", () => {
+    const result = calculateFinancialCore({
+      ...baseInput,
+      volumeMensalEstimado: 100,
+      volumeTotalMensalParaRateio: 99,
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContainEqual(
+      expect.objectContaining({ code: "TOTAL_VOLUME_BELOW_PRODUCT_VOLUME" })
+    );
+    expectOnlyFiniteNumbersOrNull(result.metrics);
+  });
+
+  it("usa fallback legado explícito quando a base total não é informada", () => {
+    const legacyInput = { ...baseInput };
+    delete legacyInput.volumeTotalMensalParaRateio;
+    const result = calculateFinancialCore(legacyInput);
+
+    expect(result.valid).toBe(true);
+    expect(result.metrics.custoFixoRateadoPorUnidade).toBeCloseTo(20);
+    expect(result.metrics.volumeTotalMensalParaRateio).toBe(100);
+    expect(result.warnings).toContainEqual(
+      expect.objectContaining({ code: "LEGACY_FIXED_COST_ALLOCATION_FALLBACK" })
+    );
   });
 });

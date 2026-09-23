@@ -6,7 +6,9 @@ import { db } from "../lib/firebase";
 import { calculateFinancialCore } from "../lib/business/financialCore";
 import {
   buildFinancialCoreInput,
+  buildProductInputsPayload,
   buildFinancialResultsPayload,
+  getPortfolioAllocationContext,
   getFixedCostsTotal,
   resolveProductTaxRateOverride,
 } from "../lib/business/calculatorFinancialAdapter";
@@ -33,6 +35,7 @@ const FINANCIAL_FIELD_LABELS = {
   outrosCustosVariaveisMonetarios: "outros custos variáveis monetários",
   custosFixosMensais: "custos fixos mensais",
   volumeMensalEstimado: "volume mensal estimado",
+  volumeTotalMensalParaRateio: "volume total mensal do portfólio",
   effectiveTaxRatePct: "alíquota efetiva",
   taxaVariavelPct: "taxas variáveis sobre a venda",
   margemOperacionalAlvoPct: "margem operacional alvo",
@@ -323,6 +326,7 @@ export default function Calculadora() {
   const [editMode, setEditMode] = useState(false);
   const [editId, setEditId] = useState(null);
   const [companyData, setCompanyData] = useState(null);
+  const [portfolioProducts, setPortfolioProducts] = useState([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [showFichaTecnica, setShowFichaTecnica] = useState(false);
@@ -356,6 +360,16 @@ export default function Calculadora() {
 
   useEffect(() => {
     if (!user) return;
+    return onSnapshot(collection(db, "users", user.uid, "products"), (snap) => {
+      setPortfolioProducts(snap.docs.map((product) => ({
+        id: product.id,
+        ...product.data(),
+      })));
+    });
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
     if (!productId) return;
     getDoc(doc(db, "users", user.uid, "products", productId)).then((snap) => {
       if (!snap.exists()) return;
@@ -374,10 +388,25 @@ export default function Calculadora() {
 
   const taxRegime = companyData?.taxRegime || "unknown";
 
+  const allocationContext = useMemo(
+    () =>
+      getPortfolioAllocationContext({
+        products: portfolioProducts,
+        currentProductId: productId,
+        currentVolume: form.volumeEstimado,
+      }),
+    [portfolioProducts, productId, form.volumeEstimado]
+  );
+
   const fixedCostsTotal = useMemo(() => getFixedCostsTotal(companyData), [companyData]);
   const financialCoreInput = useMemo(
-    () => buildFinancialCoreInput({ form, company: companyData }),
-    [form, companyData]
+    () =>
+      buildFinancialCoreInput({
+        form,
+        company: companyData,
+        volumeTotalMensalParaRateio: allocationContext.volumeTotalMensalParaRateio,
+      }),
+    [form, companyData, allocationContext.volumeTotalMensalParaRateio]
   );
   const financialResult = useMemo(
     () => calculateFinancialCore(financialCoreInput),
@@ -386,6 +415,11 @@ export default function Calculadora() {
   const financialMetrics = financialResult.metrics;
   const financialErrors = financialResult.errors.map(getFinancialMessage);
   const financialWarnings = financialResult.warnings.map(getFinancialMessage);
+  if (allocationContext.hasProductsWithoutValidVolume) {
+    financialWarnings.push(
+      "Existem produtos sem volume mensal informado. O rateio dos custos fixos pode estar incompleto."
+    );
+  }
 
   const cmv = financialCoreInput.cmv;
   const volume = financialCoreInput.volumeMensalEstimado;
@@ -427,13 +461,13 @@ export default function Calculadora() {
       if (editMode) {
         await updateDoc(doc(db, "users", user.uid, "products", editId), {
           name: form.productName.trim() || "Produto sem nome",
-          inputs: { ...form },
+          inputs: buildProductInputsPayload(form),
           results: resultPayload,
         });
       } else {
         await addDoc(collection(db, "users", user.uid, "products"), {
           name: form.productName.trim() || "Produto sem nome",
-          inputs: { ...form },
+          inputs: buildProductInputsPayload(form),
           results: resultPayload,
           createdAt: serverTimestamp(),
         });
@@ -478,7 +512,8 @@ export default function Calculadora() {
       color: "#10B981",
     },
     {
-      label: "Ponto de Equilíbrio",
+      label: "Ponto de Equilíbrio Equivalente",
+      hint: "Quantidade equivalente caso as vendas tivessem esta mesma margem de contribuição.",
       value:
         pontoEquilibrioUnidades != null ? `${pontoEquilibrioUnidades} un/mês` : "—",
       color: "#8B5CF6",
@@ -709,6 +744,13 @@ export default function Calculadora() {
                 </div>
               </Field>
               <ReadonlyRow label="Custo fixo mensal total" value={currency(fixedCostsTotal)} />
+              <ReadonlyRow
+                label="Volume total usado no rateio"
+                value={`${allocationContext.volumeTotalMensalParaRateio.toLocaleString("pt-BR")} un/mês`}
+              />
+              <p className="text-xs text-[#475569] leading-relaxed">
+                Os custos fixos são distribuídos pelo volume mensal estimado dos produtos cadastrados.
+              </p>
               <ReadonlyRow
                 label="Custo fixo por unidade"
                 value={
