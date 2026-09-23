@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { collection, onSnapshot } from "firebase/firestore";
 import { GraduationCap } from "lucide-react";
-import { useAuth } from "../contexts/AuthContext";
 import { db } from "../lib/firebase";
 
 const CATEGORIES = ["Todos", "Precificação", "Impostos", "Gestão", "Vendas", "Empreendedorismo"];
@@ -63,7 +62,6 @@ function ContentCard({ item }) {
 }
 
 export default function Academia() {
-  const { user } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState("Todos");

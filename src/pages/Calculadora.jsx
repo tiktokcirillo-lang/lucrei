@@ -296,6 +296,7 @@ function FichaTecnicaModal({ productName, user, onClose, onApply }) {
 export default function Calculadora() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
+  const productId = searchParams.get("id");
   const [editMode, setEditMode] = useState(false);
   const [editId, setEditId] = useState(null);
   const [companyData, setCompanyData] = useState(null);
@@ -331,16 +332,15 @@ export default function Calculadora() {
 
   useEffect(() => {
     if (!user) return;
-    const id = searchParams.get("id");
-    if (!id) return;
-    getDoc(doc(db, "users", user.uid, "products", id)).then((snap) => {
+    if (!productId) return;
+    getDoc(doc(db, "users", user.uid, "products", productId)).then((snap) => {
       if (!snap.exists()) return;
       const inputs = snap.data().inputs;
       if (inputs) setForm(inputs);
       setEditMode(true);
-      setEditId(id);
+      setEditId(productId);
     });
-  }, [user]);
+  }, [user, productId]);
 
   const taxRegime = companyData?.taxRegime || "unknown";
   const defaultTaxRate = TAX_RATES[taxRegime] ?? 0.10;
