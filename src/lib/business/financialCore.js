@@ -270,6 +270,7 @@ export function calculateFinancialCore(input = {}) {
       )
     );
   } else if (
+    precoVendaAvaliado != null &&
     precoMinimoOperacional != null &&
     precoVendaAvaliado < precoMinimoOperacional
   ) {

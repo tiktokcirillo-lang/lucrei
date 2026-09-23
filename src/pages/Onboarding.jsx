@@ -18,7 +18,7 @@ const TAX_REGIMES = [
   { value: "simples", label: "Simples Nacional", description: "Pequenas empresas com tributação simplificada" },
   { value: "presumido", label: "Lucro Presumido", description: "Imposto calculado sobre uma margem presumida" },
   { value: "real", label: "Lucro Real", description: "Imposto calculado sobre o lucro contábil real" },
-  { value: "unknown", label: "Ainda não sei", description: "Usaremos uma estimativa padrão para você" },
+  { value: "unknown", label: "Ainda não sei", description: "Você poderá informar esses dados depois" },
 ];
 
 const FIXED_COST_FIELDS = [
@@ -66,6 +66,7 @@ export default function Onboarding() {
     productType: "Produto Físico",
     salesChannel: "",
     taxRegime: "",
+    effectiveTaxRatePct: "",
     fixedCosts: {
       rent: "",
       employees: "",
@@ -97,6 +98,8 @@ export default function Onboarding() {
       for (const { key } of FIXED_COST_FIELDS) {
         costs[key] = parseFloat(form.fixedCosts[key]) || 0;
       }
+      const effectiveTaxRatePct =
+        form.effectiveTaxRatePct === "" ? "" : parseFloat(form.effectiveTaxRatePct);
 
       await setDoc(doc(db, "users", user.uid), {
         company: {
@@ -104,6 +107,7 @@ export default function Onboarding() {
           productType: form.productType,
           salesChannel: form.salesChannel,
           taxRegime: form.taxRegime,
+          effectiveTaxRatePct,
           fixedCosts: costs,
         },
         createdAt: serverTimestamp(),
@@ -197,6 +201,30 @@ export default function Onboarding() {
                     <p className="text-gray-400 text-xs mt-0.5">{regime.description}</p>
                   </button>
                 ))}
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">
+                  Alíquota efetiva sobre vendas (%)
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={form.effectiveTaxRatePct}
+                    onChange={(e) => setField("effectiveTaxRatePct", e.target.value)}
+                    placeholder="Opcional"
+                    className="w-full bg-gray-800 text-white rounded-lg px-4 py-2.5 pr-10 outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-600"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm select-none pointer-events-none">
+                    %
+                  </span>
+                </div>
+                <p className="text-gray-500 text-xs mt-2 leading-relaxed">
+                  O regime tributário e a alíquota efetiva não são a mesma coisa. Consulte seu
+                  contador caso tenha dúvida. Você pode preencher este campo depois.
+                </p>
               </div>
             </div>
           )}
