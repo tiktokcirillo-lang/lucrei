@@ -35,11 +35,13 @@ Não autoriza produção, cobrança real ou exclusão de dados.
   leitura de cupons desativadas.
 - Tela pública de login e páginas legais renderizadas em viewport de 390 px, sem
   overflow horizontal ou overlay de erro, usando configuração Firebase fictícia.
+- GitHub Actions aprovado nos jobs `verify` e `firestore`: 84 testes da suíte
+  principal e 10 testes adicionais no emulador Firestore, totalizando 94.
 
 Os testes Firestore que dependem do emulador não foram reproduzidos nesta máquina,
-pois Java e Firebase CLI não estão instalados. O workflow CI inclui Java 21 e Firebase
-CLI 15.32.1 e deve executá-los na branch antes do merge. A renderização local não
-homologa login Google real nem fluxos autenticados.
+pois Java e Firebase CLI não estão instalados; foram reproduzidos com Java 21 e
+Firebase CLI 15.32.1 no CI. A renderização local não homologa login Google real nem
+fluxos autenticados.
 
 ## Configuração segura de homologação
 
@@ -108,4 +110,3 @@ de UIDs precisa ser planejada e testada separadamente.
 - decisões comerciais e limites ainda não fornecidos;
 - conclusão e aprovação jurídica das páginas legais;
 - validação fiscal e decisão sobre Stripe Tax;
-- execução verde do CI completo com emulador Firestore.
