@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { usePortfolio } from "../hooks/usePortfolio";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { collection, onSnapshot, deleteDoc, doc } from "firebase/firestore";
+import { deleteDoc, doc } from "firebase/firestore";
 import { Package, Plus, Pencil, Trash2 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { db } from "../lib/firebase";
@@ -27,32 +28,15 @@ const FILTERS = ["Todos", "Classe A", "Classe B", "Classe C"];
 export default function Produtos() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [produtos, setProdutos] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { produtos, loading, error } = usePortfolio();
+
   const [filter, setFilter] = useState("Todos");
 
-  useEffect(() => {
-    if (!user) return;
-    const unsub = onSnapshot(
-      collection(db, "users", user.uid, "products"),
-      (snap) => {
-        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        list.sort((a, b) => {
-          const ta = a.createdAt?.toMillis?.() ?? 0;
-          const tb = b.createdAt?.toMillis?.() ?? 0;
-          return tb - ta;
-        });
-        setProdutos(list);
-        setLoading(false);
-      },
-      () => setLoading(false)
-    );
-    return unsub;
-  }, [user]);
+
 
   async function handleDelete(id, name) {
     if (!window.confirm(`Excluir "${name}"? Essa ação não pode ser desfeita.`)) return;
-    await deleteDoc(doc(db, "users", user.uid, "products", id));
+    try { await deleteDoc(doc(db, "users", user.uid, "products", id)); } catch { window.alert("Não foi possível excluir. Tente novamente."); }
   }
 
   const filtered = produtos.filter((p) => {
@@ -62,10 +46,12 @@ export default function Produtos() {
     return filter === `Classe ${cls}`;
   });
 
+  if (error && !produtos.length) return <div role="alert" className="p-8 text-red-400">{error} <a className="underline" href="/produtos">Ver produtos</a><button className="ml-4 underline" onClick={() => window.location.reload()}>Tentar novamente</button></div>;
   return (
     <div className="min-h-screen bg-[#060A12] p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
 
+        {error && <p role="alert" className="text-red-400 mb-4">{error}</p>}
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
           <div>
@@ -186,7 +172,7 @@ export default function Produtos() {
                         { label: "Margem", value: r.margemReal != null ? `${r.margemReal.toFixed(1)}%` : "—", color: "#F59E0B" },
                         { label: "Markup", value: r.markup != null ? `${r.markup.toFixed(2)}x` : "—", color: "#3B82F6" },
                         { label: "MC", value: formatCurrency(r.margemContribuicao), color: "#10B981" },
-                        { label: "CMV", value: formatCurrency(r.totalCmv ?? r.cmvTotal), color: "#64748B" },
+                        { label: "CMV", value: formatCurrency(r.cmv), color: "#64748B" },
                       ].map((m) => (
                         <div key={m.label} className="bg-[#0A0D14] rounded-lg p-2.5">
                           <p className="text-[10px] text-[#475569] uppercase tracking-wide">{m.label}</p>

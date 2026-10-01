@@ -5,6 +5,7 @@ import { auth, googleProvider, db } from "../lib/firebase";
 import { AuthContext } from "./AuthContext";
 
 export function AuthProvider({ children }) {
+  const [error, setError] = useState(false);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [hasCompany, setHasCompany] = useState(false);
@@ -13,6 +14,7 @@ export function AuthProvider({ children }) {
     let unsubscribeFromUser = null;
 
     const unsubscribeFromAuth = onAuthStateChanged(auth, (firebaseUser) => {
+      setError(false);
       unsubscribeFromUser?.();
       unsubscribeFromUser = null;
 
@@ -23,6 +25,8 @@ export function AuthProvider({ children }) {
         return;
       }
 
+      setLoading(true);
+      setHasCompany(false);
       setUser(firebaseUser);
       unsubscribeFromUser = onSnapshot(
         doc(db, "users", firebaseUser.uid),
@@ -31,7 +35,7 @@ export function AuthProvider({ children }) {
           setLoading(false);
         },
         () => {
-          setHasCompany(false);
+          setError(true);
           setLoading(false);
         }
       );
@@ -42,6 +46,8 @@ export function AuthProvider({ children }) {
       unsubscribeFromUser?.();
     };
   }, []);
+
+  if (error) return <div role="alert" className="p-8 text-red-400">Não foi possível carregar sua conta. <button onClick={() => window.location.reload()}>Tentar novamente</button></div>;
 
   const loginWithGoogle = () => signInWithPopup(auth, googleProvider);
   const logout = () => signOut(auth);

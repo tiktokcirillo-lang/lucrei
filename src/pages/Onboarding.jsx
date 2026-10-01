@@ -98,6 +98,7 @@ export default function Onboarding() {
       for (const { key } of FIXED_COST_FIELDS) {
         costs[key] = parseFloat(form.fixedCosts[key]) || 0;
       }
+      if (Object.values(form.fixedCosts).some(v => v !== "" && (!Number.isFinite(Number(v)) || Number(v) < 0)) || (form.effectiveTaxRatePct !== "" && (!Number.isFinite(Number(form.effectiveTaxRatePct)) || Number(form.effectiveTaxRatePct) < 0 || Number(form.effectiveTaxRatePct) >= 100))) throw new Error("Valores inválidos");
       const effectiveTaxRatePct =
         form.effectiveTaxRatePct === "" ? "" : parseFloat(form.effectiveTaxRatePct);
 
@@ -111,12 +112,13 @@ export default function Onboarding() {
           fixedCosts: costs,
         },
         createdAt: serverTimestamp(),
-      });
+      }, { merge: true });
 
       await new Promise((resolve) => setTimeout(resolve, 500));
       navigate("/", { replace: true });
     } catch (err) {
       console.error(err);
+      window.alert("Não foi possível salvar. Confira a conexão e tente novamente.");
       setSaving(false);
     }
   }
@@ -124,6 +126,7 @@ export default function Onboarding() {
   return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
       <div className="w-full max-w-lg">
+        <a className="text-emerald-400 underline" href="/conta">Minha conta e assinatura</a>
         <h1 className="text-3xl font-bold text-white text-center mb-2">Lucrei</h1>
         <p className="text-gray-400 text-center mb-8">Vamos configurar o seu negócio</p>
 

@@ -8,6 +8,7 @@ import {
   deleteDoc,
   doc,
   serverTimestamp,
+  writeBatch,
 } from "firebase/firestore";
 import { Camera, Carrot } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
@@ -78,9 +79,9 @@ function IngredientModal({ initial, editingId, onClose, onSave }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!form.name.trim() || !form.purchasePrice || !form.purchaseQty) return;
+    if (!form.name.trim() || !Number.isFinite(Number(form.purchasePrice)) || Number(form.purchasePrice) < 0 || !(Number(form.purchaseQty) > 0) || (needsPkg && !(Number(form.unitsPerPackage) > 0))) { window.alert("Informe nome, preço e quantidades válidas."); return; }
     setSaving(true);
-    await onSave({
+    try { await onSave({
       name: form.name.trim(),
       purchaseUnit: form.purchaseUnit,
       purchaseQty: parseFloat(form.purchaseQty),
@@ -88,8 +89,8 @@ function IngredientModal({ initial, editingId, onClose, onSave }) {
       unitsPerPackage: needsPkg ? parseFloat(form.unitsPerPackage) || 1 : null,
       baseUnit,
       costPerBaseUnit: preview,
-    });
-    setSaving(false);
+    }); } catch { window.alert("Não foi possível salvar o ingrediente. Confira os valores e tente novamente."); }
+    finally { setSaving(false); }
   }
 
   return (
@@ -252,6 +253,7 @@ function ScanModal({ onClose, onImport }) {
   const [imagePreview, setImagePreview] = useState(null);
   const [imageBase64, setImageBase64] = useState(null);
   const [converting, setConverting] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [items, setItems] = useState(null);
   const [error, setError] = useState(null);
@@ -260,6 +262,7 @@ function ScanModal({ onClose, onImport }) {
     const file = e.target.files?.[0];
     if (!file) return;
     setItems(null);
+    setImageBase64(null);
     setError(null);
     setImagePreview(URL.createObjectURL(file));
     setConverting(true);
@@ -285,41 +288,16 @@ function ScanModal({ onClose, onImport }) {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${idToken}`,
         },
-        body: JSON.stringify({
-          model: "claude-haiku-4-5-20251001",
-          max_tokens: 1024,
-          messages: [
-            {
-              role: "user",
-              content: [
-                {
-                  type: "image",
-                  source: {
-                    type: "base64",
-                    media_type: "image/jpeg",
-                    data: imageBase64,
-                  },
-                },
-                {
-                  type: "text",
-                  text: `Analise este cupom fiscal ou nota de compra brasileiro e extraia todos os itens alimentícios e de insumos. Para cada item retorne SOMENTE um JSON válido sem markdown, sem explicações, apenas o JSON puro no seguinte formato:\n{"items":[{"name":"nome limpo do produto em português","purchaseUnit":"kg|g|L|ml|unidade|dúzia|pacote","purchaseQty":número,"purchasePrice":número,"confidence":"high|medium|low"}]}\nInterprete abreviações comuns de cupons brasileiros. Se não conseguir determinar a unidade com certeza, use "unidade" e marque confidence como "low".`,
-                },
-              ],
-            },
-          ],
-        }),
+        body: JSON.stringify({image: imageBase64}),
       });
       if (!res.ok) {
         const errBody = await res.json();
         console.error("Anthropic API error:", errBody);
-        throw new Error(errBody?.error?.message || `HTTP ${res.status}`);
+        throw new Error((typeof errBody?.error === "string" ? errBody.error : errBody?.error?.message) || `HTTP ${res.status}`);
       }
       const data = await res.json();
-      const raw = data.content?.[0]?.text?.trim() || "";
-      const jsonStr = raw.startsWith("{")
-        ? raw
-        : raw.match(/```(?:json)?\n?([\s\S]+?)\n?```/)?.[1] || raw;
-      const parsed = JSON.parse(jsonStr);
+      const parsed = data;
+      if (!Array.isArray(parsed.items)) throw new Error("Resposta inválida. Tente outra foto.");
       setItems(parsed.items.map((item, i) => ({ ...item, _id: i, _selected: true })));
     } catch (err) {
       console.error("Scan error:", err);
@@ -396,7 +374,7 @@ function ScanModal({ onClose, onImport }) {
               {!imagePreview && (
                 <div className="text-center py-4">
                   <p className="text-4xl mb-3">🧾</p>
-                  <p className="text-gray-400 text-sm">Selecione a foto do cupom fiscal</p>
+                  <p className="text-gray-400 text-sm">Selecione a foto do cupom fiscal. Cada tentativa enviada consome uma leitura do plano, mesmo se o serviço falhar.</p>
                 </div>
               )}
 
@@ -517,8 +495,8 @@ function ScanModal({ onClose, onImport }) {
               Nova Análise
             </button>
             <button
-              onClick={() => onImport(items.filter((i) => i._selected))}
-              disabled={!selectedCount}
+              onClick={async () => { setImporting(true); try { await onImport(items.filter((i) => i._selected)); } catch { setError("Não foi possível importar. Confira os valores e tente novamente."); } finally { setImporting(false); } }}
+              disabled={importing || !selectedCount}
               className="flex-1 py-2.5 rounded-xl bg-green-500 hover:bg-green-600 disabled:opacity-40 text-white text-sm font-semibold transition"
             >
               Importar ({selectedCount})
@@ -541,7 +519,8 @@ export default function Ingredientes() {
     if (!user) return;
     return onSnapshot(
       collection(db, "users", user.uid, "ingredients"),
-      (snap) => setIngredients(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      (snap) => setIngredients(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      () => window.alert("Não foi possível carregar os ingredientes. Recarregue a página.")
     );
   }, [user]);
 
@@ -560,15 +539,18 @@ export default function Ingredientes() {
 
   async function handleDelete(id) {
     if (!window.confirm("Excluir este ingrediente?")) return;
-    await deleteDoc(doc(db, "users", user.uid, "ingredients", id));
+    try { await deleteDoc(doc(db, "users", user.uid, "ingredients", id)); } catch { window.alert("Não foi possível excluir. Tente novamente."); }
   }
 
   async function importFromScan(items) {
+    if (items.length > 400) throw new Error("Muitos itens");
+    const batch = writeBatch(db);
     for (const item of items) {
+      if (!item.name?.trim() || !PURCHASE_UNITS.includes(item.purchaseUnit) || !(Number(item.purchaseQty) > 0) || !Number.isFinite(Number(item.purchasePrice)) || Number(item.purchasePrice) < 0) throw new Error("Item inválido");
       const pu = item.purchaseUnit;
       const baseUnit = getBaseUnit(pu);
       const costPerBase = calcCostPerBase(item.purchasePrice, item.purchaseQty, pu, null);
-      await addDoc(collection(db, "users", user.uid, "ingredients"), {
+      batch.set(doc(collection(db, "users", user.uid, "ingredients")), {
         name: item.name,
         purchaseUnit: pu,
         purchaseQty: parseFloat(item.purchaseQty) || 1,
@@ -579,6 +561,7 @@ export default function Ingredientes() {
         createdAt: serverTimestamp(),
       });
     }
+    await batch.commit();
     setShowScan(false);
   }
 

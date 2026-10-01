@@ -1,3 +1,7 @@
+> Histórico anterior às etapas 1 e 2. O estado atual está em ENTREGA-AO-DONO.txt e README.md na raiz.
+
+> Documento anterior à entrega da etapa 1. Consulte ENTREGA-AO-DONO.txt na raiz para o estado e as limitações desta entrega.
+
 # Auditoria de preparação SaaS — Lucrei
 
 Data: 23/09/2026

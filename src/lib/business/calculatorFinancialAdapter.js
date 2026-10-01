@@ -6,7 +6,7 @@ function toNumber(value) {
   if (!isProvided(value)) return 0;
   const normalized = typeof value === "string" ? value.trim().replace(",", ".") : value;
   const parsed = typeof normalized === "number" ? normalized : Number(normalized);
-  return Number.isFinite(parsed) ? parsed : 0;
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : NaN;
 }
 
 function sumFields(source, fields) {

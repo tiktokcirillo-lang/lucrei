@@ -1,0 +1,53 @@
+LUCREI — ETAPA 2
+Entrega preparada em 02/10/2026 para Ohr Creative Hub
+Contato: ohrcreativehub@gmail.com
+
+PACOTE PARA GITHUB / VERCEL
+Contém também as correções da etapa 1. Copie os arquivos da pasta para a raiz do
+repositório, incluindo .github, .env.example e .gitignore. Confira README.md e
+OPERACAO.txt antes de publicar. Nenhum deploy, cobrança ou acesso a dados reais foi
+realizado. Não há credenciais no ZIP.
+
+IMPLEMENTADO
+- Checkout Stripe, portal do cliente e sincronização de assinaturas por webhooks.
+- Assinatura verificada pelo servidor, eventos repetidos ignorados e consulta do
+  estado atual para evitar aplicar um snapshot antigo de evento.
+- Planos e Price IDs definidos exclusivamente no servidor; sem preços inventados.
+- Controle de acesso nas regras Firestore, com política explícita para piloto grátis.
+- Leitura de cupons limitada a imagem, prompt fixo, validação de resposta e cotas
+  transacionais por conta/mês, por minuto e globais.
+- Página Conta: situação da assinatura, exportação JSON e exclusão com reautenticação.
+- Exclusão recursiva de dados, cancelamento de assinaturas e bloqueio de novas escritas.
+- Regras com validação de estrutura e valores; cliente não pode conceder planos/cotas.
+- Minutas de termos e privacidade com empresa e contato fornecidos.
+- Logs técnicos sem conteúdo sensível, endpoint de saúde e workflows opt-in de
+  monitoramento e exportação Firestore; script de restauração em projeto separado.
+- Atualizações de dependências e correções transitivas com overrides explícitos.
+- Verificações automáticas no GitHub, incluindo suíte com emulador Firestore.
+
+VERIFICADO LOCALMENTE
+83 testes passaram, sem testes ignorados na execução completa com o emulador.
+Incluem isolamento de contas, plano expirado, dados inválidos, adulteração de
+permissões, concorrência de cotas, exportação e exclusão recursiva preservando outra
+conta. Incluem autenticação do servidor, validação de assinatura de webhook e
+sincronização Stripe com respostas simuladas. Firebase Auth e Stripe não receberam
+operações reais nesses testes.
+Lint e build passaram. npm audit reportou zero vulnerabilidades conhecidas na
+verificação. Há avisos de tamanho dos arquivos do front-end, especialmente HEIC.
+TESTES-EXECUTADOS.txt e AUDITORIA-DEPENDENCIAS.json registram os resultados.
+
+AINDA NÃO É UMA ATIVAÇÃO DE PRODUÇÃO
+O dono responderá depois quais serão preços, planos, limites e teste gratuito.
+BILLING_ENABLED=false, LEGAL_APPROVED=false e AI_GLOBAL_MONTHLY_LIMIT=0 mantêm
+cobrança e leitura de cupons desativadas por padrão. A política Firestore precisa
+ser inicializada conforme o README: sem ela, gravações são negadas.
+
+Faltam credenciais e configuração nos serviços, preços Stripe reais, webhook na
+URL final, portal do cliente, revisão/complementação das minutas legais e validação
+fiscal. Stripe Tax não foi ativado. Falta homologar OAuth/Stripe/cupons na Vercel e
+executar/restaurar backup real. Workflows de backup/monitoramento só operam após
+habilitação explícita das variáveis GitHub e permissões necessárias.
+
+O backup fornecido cobre Firestore, não Firebase Auth, Storage, Stripe ou segredos.
+Consulte OPERACAO.txt para as dependências e o roteiro de recuperação. Não trate
+um build ou testes simulados como prova de recuperação de produção.

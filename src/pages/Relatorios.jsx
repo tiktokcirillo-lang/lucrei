@@ -1,14 +1,13 @@
-import { useState, useEffect, useMemo } from "react";
-import { collection, getDocs, getDoc, doc } from "firebase/firestore";
+import { calculateStatement } from "../lib/business/portfolio";
+import { usePortfolio } from "../hooks/usePortfolio";
+import { useState } from "react";
+
 import { jsPDF } from "jspdf";
 import { TrendingUp, BarChart2 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
-import { db } from "../lib/firebase";
 
-function n(v) {
-  const x = parseFloat(v);
-  return isNaN(x) ? 0 : x;
-}
+
+
 
 function fmtR(v) {
   if (v == null || !isFinite(v)) return "—";
@@ -37,79 +36,37 @@ const FIXED_COST_LABELS = {
 
 const HISTORY_KEY = "lucrei_export_history";
 
-function loadHistory() {
+function loadHistory(uid) {
   try {
-    return JSON.parse(localStorage.getItem(HISTORY_KEY) ?? "[]");
+    const history = JSON.parse(localStorage.getItem(`${HISTORY_KEY}_${uid}`) ?? "[]");
+    return Array.isArray(history) ? history : [];
   } catch {
     return [];
   }
 }
 
-function pushHistory(entry) {
-  const list = loadHistory();
+function pushHistory(uid, entry) {
+  const list = loadHistory(uid);
   list.unshift(entry);
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, 10)));
+  try { localStorage.setItem(`${HISTORY_KEY}_${uid}`, JSON.stringify(list.slice(0, 10))); } catch { /* PDF still downloads if storage is unavailable. */ }
   return list.slice(0, 10);
 }
 
 export default function Relatorios() {
   const { user } = useAuth();
-  const [produtos, setProdutos] = useState([]);
-  const [fixedCosts, setFixedCosts] = useState({});
-  const [companyName, setCompanyName] = useState("Minha Empresa");
-  const [loading, setLoading] = useState(true);
-  const [history, setHistory] = useState(loadHistory);
+  const { produtos, company, loading, error } = usePortfolio();
+  const fixedCosts = company.fixedCosts ?? {};
+  const companyName = company.name || "Minha Empresa";
 
-  useEffect(() => {
-    if (!user) return;
-    Promise.all([
-      getDocs(collection(db, "users", user.uid, "products")),
-      getDoc(doc(db, "users", user.uid)),
-    ]).then(([prodSnap, compSnap]) => {
-      setProdutos(prodSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      const company = compSnap.data()?.company ?? {};
-      setFixedCosts(company.fixedCosts ?? {});
-      setCompanyName(company.name || "Minha Empresa");
-      setLoading(false);
-    });
-  }, [user]);
+  const [history, setHistory] = useState(() => loadHistory(user.uid));
 
-  const dre = useMemo(() => {
-    let receitaBruta = 0, deducoesFiscais = 0, cmvTotal = 0, custosVariaveisTotal = 0;
-    for (const p of produtos) {
-      const r = p.results ?? {};
-      const inp = p.inputs ?? {};
-      const vol = n(inp.volumeEstimado);
-      const preco = r.precoSugerido ?? 0;
-      const taxRate = (r.taxRatePct ?? 0) / 100;
-      const taxaVariavelPct =
-        (n(inp.taxaPlataforma) + n(inp.taxaGateway) + n(inp.provisaoDevolucoes)) / 100;
-      receitaBruta += preco * vol;
-      deducoesFiscais += preco * taxRate * vol;
-      cmvTotal += (r.cmv ?? 0) * vol;
-      custosVariaveisTotal += (r.custoVariavelR ?? 0) * vol + preco * taxaVariavelPct * vol;
-    }
-    const receitaLiquida = receitaBruta - deducoesFiscais;
-    const lucroBruto = receitaLiquida - cmvTotal;
-    const despesasOp = Object.values(fixedCosts).reduce((a, b) => a + (b || 0), 0);
-    const lucroLiquido = lucroBruto - despesasOp - custosVariaveisTotal;
-    const margemLiquida = receitaBruta > 0 ? (lucroLiquido / receitaBruta) * 100 : null;
-    const ebitda = lucroLiquido + deducoesFiscais;
-    const contribTotal = receitaBruta - cmvTotal - custosVariaveisTotal - deducoesFiscais;
-    const mcRatio = receitaBruta > 0 ? contribTotal / receitaBruta : 0;
-    const peReais = mcRatio > 0 ? despesasOp / mcRatio : null;
-    const totalVol = produtos.reduce((a, p) => a + n(p.inputs?.volumeEstimado), 0);
-    const precoMedio = totalVol > 0 ? receitaBruta / totalVol : null;
-    const peUnidades = peReais != null && precoMedio ? Math.ceil(peReais / precoMedio) : null;
-    return {
-      receitaBruta, deducoesFiscais, receitaLiquida,
-      cmvTotal, lucroBruto, despesasOp, custosVariaveisTotal,
-      lucroLiquido, margemLiquida, ebitda, peReais, peUnidades,
-    };
-  }, [produtos, fixedCosts]);
+
+
+  const dre = calculateStatement(produtos, company);
+
 
   function addToHistory(name) {
-    setHistory(pushHistory({ name, date: new Date().toISOString() }));
+    setHistory(pushHistory(user.uid, { name, date: new Date().toISOString() }));
   }
 
   function gerarPdfMargem() {
@@ -126,7 +83,7 @@ export default function Relatorios() {
     pdf.text("Relatorio de Margem por Produto", 14, 28);
     pdf.setFontSize(8);
     pdf.setTextColor(130, 130, 130);
-    pdf.text("Gerado em: " + now, 14, 34);
+    pdf.text("Projecao mensal, nao representa vendas realizadas. Gerado em: " + now, 14, 34);
 
     // Table header
     const cols = ["Produto", "Preco Sug.", "CMV", "Margem %", "Markup", "Classe"];
@@ -192,7 +149,7 @@ export default function Relatorios() {
     pdf.text("DRE - Demonstracao do Resultado do Exercicio", 14, 28);
     pdf.setFontSize(8);
     pdf.setTextColor(130, 130, 130);
-    pdf.text("Gerado em: " + now, 14, 34);
+    pdf.text("Projecao mensal, nao representa vendas realizadas. Gerado em: " + now, 14, 34);
 
     const dreRows = [
       { label: "(+) Receita Bruta", val: fmtR(dre.receitaBruta), bold: false },
@@ -210,9 +167,8 @@ export default function Relatorios() {
           sub: true,
         })),
       { label: "(-) Custos Variaveis Totais", val: fmtR(dre.custosVariaveisTotal), bold: false },
-      { label: "(=) Lucro Liquido", val: fmtR(dre.lucroLiquido), bold: true },
+      { label: "(=) Resultado Operacional Estimado", val: fmtR(dre.lucroLiquido), bold: true },
       { label: "(%) Margem Liquida", val: fmtPct(dre.margemLiquida), bold: false },
-      { label: "EBITDA Estimado", val: fmtR(dre.ebitda), bold: false },
       { label: "Ponto de Equilibrio (R$)", val: dre.peReais != null ? fmtR(dre.peReais) : "—", bold: false },
       { label: "Ponto de Equilibrio (un)", val: dre.peUnidades != null ? dre.peUnidades + " un" : "—", bold: false },
     ];
@@ -239,7 +195,7 @@ export default function Relatorios() {
     pdf.text("Gerado pelo Lucrei", 14, 290);
 
     pdf.save("dre-mensal.pdf");
-    addToHistory("DRE Mensal");
+    addToHistory("DRE Mensal Estimada");
   }
 
   function fmtHistDate(iso) {
@@ -249,6 +205,7 @@ export default function Relatorios() {
     });
   }
 
+  if (error) return <div role="alert" className="p-8 text-red-400">{error} <a className="underline" href="/produtos">Ver produtos</a><button className="ml-4 underline" onClick={() => window.location.reload()}>Tentar novamente</button></div>;
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
@@ -294,7 +251,7 @@ export default function Relatorios() {
             <div className="flex items-start gap-4">
               <BarChart2 size={20} className="mt-0.5 shrink-0" style={{ color: '#3B82F6' }} />
               <div>
-                <p className="text-sm font-semibold text-white mb-1">DRE Mensal</p>
+                <p className="text-sm font-semibold text-white mb-1">DRE Mensal Estimada</p>
                 <p className="text-xs text-gray-400">
                   Demonstração do Resultado do Exercício com todos os indicadores
                 </p>
