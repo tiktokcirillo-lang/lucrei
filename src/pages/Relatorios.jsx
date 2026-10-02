@@ -109,7 +109,7 @@ export default function Relatorios() {
       const r = p.results ?? {};
       const margem = r.margemReal ?? 0;
       const row = [
-        (p.inputs?.nome ?? "—").substring(0, 22),
+        (p.name ?? p.inputs?.productName ?? "—").substring(0, 22),
         r.precoSugerido != null ? fmtR(r.precoSugerido) : "—",
         r.cmv != null ? fmtR(r.cmv) : "—",
         fmtPct(margem),

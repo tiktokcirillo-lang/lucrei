@@ -2,13 +2,13 @@
 import {describe,it,expect,vi,beforeEach,afterEach} from 'vitest';
 import {render,screen,fireEvent,waitFor,cleanup} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
-const state=vi.hoisted(()=>({user:{uid:"alice",email:"alice@example.test"},portfolio:{},setDoc:vi.fn(),getDoc:vi.fn(),addDoc:vi.fn(),updateDoc:vi.fn(),login:vi.fn(),pdfSave:vi.fn()}));
+const state=vi.hoisted(()=>({user:{uid:"alice",email:"alice@example.test"},portfolio:{},setDoc:vi.fn(),getDoc:vi.fn(),addDoc:vi.fn(),updateDoc:vi.fn(),login:vi.fn(),pdfSave:vi.fn(),pdfText:vi.fn()}));
 vi.mock('../src/hooks/usePortfolio',()=>({usePortfolio:()=>state.portfolio}));
 vi.mock('../src/contexts/AuthContext',()=>({useAuth:()=>({user:state.user,loginWithGoogle:state.login,logout:vi.fn()})}));
 vi.mock('../src/lib/firebase',()=>({db:{}}));
 vi.mock('firebase/firestore',()=>({doc:(...args)=>args,collection:(...args)=>args,setDoc:state.setDoc,getDoc:state.getDoc,addDoc:state.addDoc,updateDoc:state.updateDoc,serverTimestamp:()=>123,onSnapshot:(_ref,cb)=>{cb({docs:[]});return ()=>{};}}));
 vi.mock('recharts',()=>({BarChart:()=>null,Bar:()=>null,XAxis:()=>null,YAxis:()=>null,Tooltip:()=>null,ResponsiveContainer:()=>null}));
-vi.mock('jspdf',()=>({jsPDF:class { constructor(){return new Proxy({internal:{pageSize:{getWidth:()=>210,getHeight:()=>297}},save:state.pdfSave},{get:(target,key)=>target[key]??(()=>{})});}}}));
+vi.mock('jspdf',()=>({jsPDF:class { constructor(){return new Proxy({internal:{pageSize:{getWidth:()=>210,getHeight:()=>297}},save:state.pdfSave,text:state.pdfText},{get:(target,key)=>target[key]??(()=>{})});}}}));
 import Calculadora from '../src/pages/Calculadora';
 import Layout from '../src/components/Layout';
 import Simulador from '../src/pages/Simulador';
@@ -73,6 +73,7 @@ describe('Fluxos do piloto com serviços simulados',()=>{
  it('gera os dois relatórios PDF',()=>{
   mount(Relatorios);screen.getAllByRole('button',{name:'Gerar PDF'}).forEach(button=>fireEvent.click(button));
   expect(state.pdfSave).toHaveBeenCalledTimes(2);
+  expect(state.pdfText).toHaveBeenCalledWith('Bolo',expect.any(Number),expect.any(Number));
  });
  it('mostra falha de leitura em vez de carregar para sempre',()=>{
   state.portfolio={...state.portfolio,error:'Falha de conexão'};mount(DRE);
