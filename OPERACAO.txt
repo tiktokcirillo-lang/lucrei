@@ -1,0 +1,81 @@
+OHR CREATIVE HUB — GUIA DE OPERAÇÃO
+Contato: ohrcreativehub@gmail.com
+
+HOMOLOGAÇÃO E COMPATIBILIDADE DOS DADOS
+Use projetos separados na Vercel, Firebase e Stripe sandbox. Variáveis VITE_FIREBASE_*
+da Preview devem apontar somente ao Firebase de homologação; segredos Admin, Stripe
+e Anthropic devem ser variáveis sensíveis e nunca receber prefixo VITE_. Mantenha
+BILLING_ENABLED=false, LEGAL_APPROVED=false, STRIPE_LIVE_MODE=false e
+AI_GLOBAL_MONTHLY_LIMIT=0 até a aprovação correspondente.
+
+Antes de publicar firestore.rules, autentique a ferramenta pelo mecanismo seguro do
+ambiente e execute `FIREBASE_PROJECT_ID=... npm run check:data-compat`. O comando é
+somente-leitura e lista caminhos e códigos de incompatibilidade, sem imprimir os
+valores dos documentos. Exija `incompatible: 0`. Se houver achados, faça a exportação
+primeiro, ensaie a migração em outro projeto e valide login/escritas no emulador ou
+homologação. Não rode uma correção automática diretamente nos dados reais.
+
+ATIVAÇÃO DE BACKUP
+O workflow .github/workflows/backup.yml roda diariamente às 18:00 UTC (03:00 JST)
+quando BACKUP_ENABLED=true nas variáveis do repositório. Por padrão não executa.
+Use Workload Identity Federation para GitHub Actions, restringindo a confiança ao
+repositório e branch corretos; não coloque chaves permanentes nos arquivos Git.
+Configure GCP_WORKLOAD_IDENTITY_PROVIDER, GCP_BACKUP_SERVICE_ACCOUNT,
+FIREBASE_PROJECT_ID e BACKUP_BUCKET. O bucket precisa de acesso restrito, política
+de retenção definida e permissões de exportação da conta de serviço e do Firestore.
+Exports gerenciados podem gerar custos e exigem configuração/faturamento do projeto.
+Referência oficial: https://firebase.google.com/docs/firestore/manage-data/export-import
+
+O script scripts/backup-restore.sh export cria uma exportação gerenciada Firestore.
+Não inclui Auth, Storage, Stripe ou configuração Vercel. Preserve separadamente
+identidades Google/Firebase e configurações do serviço; não confunda esta cópia
+com um plano completo de recuperação do aplicativo.
+
+ENSAIO DE RECUPERAÇÃO — AINDA PRECISA SER EXECUTADO PELO DONO
+1. Crie ambiente isolado, com identidades e variáveis de teste; desative cobranças,
+   IA e webhooks externos nesse destino para evitar operações financeiras reais.
+2. Configure RESTORE_PROJECT_ID diferente do projeto original e BACKUP_URI de um
+   export concluído. O script bloqueia a restauração no mesmo projeto informado.
+3. Execute scripts/backup-restore.sh restore-test com as permissões necessárias.
+4. Compare quantidade de contas, produtos e ingredientes, e confira amostras de
+   fichas técnicas e projeções. Valide a correspondência dos UIDs do Firebase Auth.
+5. Reaplique as regras e a política de acesso no destino. Teste login e isolamento
+   entre contas. Reprocesse exclusões posteriores ao backup antes de liberar dados.
+6. Registre data, duração, backup usado e resultado. Não aponte produção para esse
+   ambiente sem revisão. Nenhum ensaio em nuvem foi feito nesta entrega.
+
+MONITORAMENTO
+/api/health verifica conexão de leitura com Firestore e retorna somente status.
+O workflow monitor.yml faz uma verificação horária quando MONITOR_ENABLED=true e
+APP_URL está configurado nas variáveis GitHub. Configure destinatários de falha
+nas notificações GitHub do responsável. O workflow não envia e-mails por conta própria.
+Use Vercel Observability para erros, latência e custo; logs do app usam requestId,
+status e código de erro sem imagem, prompt, token ou resposta completa de provedor.
+Configure alertas de orçamento no Google Cloud e no provedor de IA e monitore
+serviceUsage (contagem global de tentativas). O teto global limita uso, não fornece
+estimativa exata de custo monetário. Configure limites/WAF na Vercel para rotas
+públicas e autenticadas; o endpoint health não tem rate limit próprio.
+Revise falhas de webhook na Stripe e reenvie eventos após corrigir a causa.
+Marcadores de evento e exclusão usam expiresAt; a política TTL deve ser habilitada
+manualmente. Um campo expiresAt sozinho não apaga documentos.
+
+STRIPE E HOMOLOGAÇÃO
+Use sandbox separada. Teste checkout, pagamento atrasado, falha, renovação,
+cancelamento no portal, reenvio de webhook, evento fora de ordem, preço desconhecido,
+exclusão com assinatura e repetição após falha. Os testes locais não substituem essa
+validação com a conta do dono e a URL final da Vercel.
+As regras bloqueiam gravação se accessPolicy/public não existir. Defina primeiro
+se o piloto é gratuito (requireSubscription=false) ou se exige plano ativo.
+Não habilite cobrança com minutas legais: preços, reembolso, tributos, identificação
+legal, endereço e retenção precisam ser definidos pelo responsável.
+
+SEGURANÇA E RECUPERAÇÃO DE FALHAS
+Rotacione segredos expostos e remova-os também do histórico do Git. Use chaves
+restritas Stripe e variáveis sensíveis da Vercel. Guarde separadamente as credenciais
+Admin e limite quem pode acessá-las. Nunca copie dados reais para testes públicos.
+Se a exclusão falhar parcialmente, confira accounts/{uid}.deleting, dados restantes,
+cliente/assinaturas Stripe e usuário Auth. Repita o fluxo com identidade confirmada
+ou conclua pelo suporte, mantendo o bloqueio de escrita durante toda a operação.
+A exclusão é uma sequência retomável entre serviços, não uma transação distribuída.
+A política CSP mantém origens restritas. Capas externas da Academia ou domínio Auth
+customizado podem exigir adicionar apenas a origem necessária após revisão.

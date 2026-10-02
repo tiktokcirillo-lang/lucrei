@@ -1,0 +1,15 @@
+
+> lucrei@0.0.0 test
+> vitest run
+
+
+ RUN  v5.0.1 /Users/fujiianny/Documents/Codex/2026-10-01/olh/outputs/lucrei-etapa-2
+
+(node:16247) MetadataLookupWarning: received unexpected error = All promises were rejected code = ETIMEDOUT, ENOTFOUND
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+ Test Files  12 passed (12)
+      Tests  83 passed (83)
+   Start at  00:14:51
+   Duration  11.45s (tests 49%, import 26%, environment 17%, transform 8%)
+

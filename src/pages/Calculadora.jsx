@@ -1,3 +1,5 @@
+import { usePortfolio } from "../hooks/usePortfolio";
+import { recipeCost } from "../lib/business/portfolio";
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { doc, getDoc, collection, addDoc, updateDoc, onSnapshot, serverTimestamp } from "firebase/firestore";
@@ -135,10 +137,10 @@ function ReadonlyRow({ label, value, highlight }) {
   );
 }
 
-function FichaTecnicaModal({ productName, user, onClose, onApply }) {
+function FichaTecnicaModal({ productName, user, onClose, onApply, recipe }) {
   const [ingredients, setIngredients] = useState([]);
-  const [rendimento, setRendimento] = useState("1");
-  const [recipeItems, setRecipeItems] = useState([]);
+  const [rendimento, setRendimento] = useState(recipe?.yield ?? "1");
+  const [recipeItems, setRecipeItems] = useState(recipe?.items ?? []);
   const [showDropdown, setShowDropdown] = useState(false);
 
   useEffect(() => {
@@ -154,6 +156,7 @@ function FichaTecnicaModal({ productName, user, onClose, onApply }) {
       ...prev,
       {
         _key: Date.now() + Math.random(),
+        ingredientId: ing.id,
         name: ing.name,
         baseUnit: ing.baseUnit,
         costPerBaseUnit: ing.costPerBaseUnit,
@@ -171,7 +174,7 @@ function FichaTecnicaModal({ productName, user, onClose, onApply }) {
     (sum, item) => sum + (parseFloat(item.qty) || 0) * (item.costPerBaseUnit || 0),
     0
   );
-  const rend = parseFloat(rendimento) || 1;
+  const rend = Number(rendimento);
   const cmvPerUnit = rend > 0 ? totalCMV / rend : 0;
 
   return (
@@ -188,6 +191,7 @@ function FichaTecnicaModal({ productName, user, onClose, onApply }) {
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
+          <p className="text-xs text-slate-400">Custos acompanham os ingredientes cadastrados. Se um ingrediente for excluído ou mudar de unidade, o último custo salvo será mantido até você substituir o item na receita.</p>
           <div>
             <label className="block text-xs font-medium text-[#64748B] uppercase tracking-wide mb-2">
               Rendimento (unidades)
@@ -306,8 +310,8 @@ function FichaTecnicaModal({ productName, user, onClose, onApply }) {
               Cancelar
             </button>
             <button
-              onClick={() => onApply(cmvPerUnit)}
-              disabled={!cmvPerUnit || cmvPerUnit <= 0}
+              onClick={() => onApply(cmvPerUnit, { yield: rendimento, items: recipeItems })}
+              disabled={!Number.isFinite(cmvPerUnit) || cmvPerUnit <= 0 || !Number.isInteger(rend) || rend <= 0 || recipeItems.some(i => !Number.isFinite(Number(i.qty)) || Number(i.qty) <= 0)}
               className="flex-1 py-2.5 rounded-xl bg-[#10B981] hover:bg-[#059669] disabled:opacity-40 text-white text-sm font-semibold transition"
             >
               Aplicar à Calculadora
@@ -325,8 +329,9 @@ export default function Calculadora() {
   const productId = searchParams.get("id");
   const [editMode, setEditMode] = useState(false);
   const [editId, setEditId] = useState(null);
-  const [companyData, setCompanyData] = useState(null);
-  const [portfolioProducts, setPortfolioProducts] = useState([]);
+  const { company: companyData, produtos: portfolioProducts, ingredients, loading, error } = usePortfolio();
+  const [productLoading, setProductLoading] = useState(Boolean(productId));
+  const [productError, setProductError] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [showFichaTecnica, setShowFichaTecnica] = useState(false);
@@ -348,31 +353,14 @@ export default function Calculadora() {
   });
 
   function setF(key, val) {
-    setForm((f) => ({ ...f, [key]: val }));
+    setForm((f) => ({ ...f, [key]: val, ...(key === "insumos" ? {recipe: null} : {}) }));
   }
-
-  useEffect(() => {
-    if (!user) return;
-    getDoc(doc(db, "users", user.uid)).then((snap) => {
-      if (snap.exists()) setCompanyData(snap.data().company);
-    });
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) return;
-    return onSnapshot(collection(db, "users", user.uid, "products"), (snap) => {
-      setPortfolioProducts(snap.docs.map((product) => ({
-        id: product.id,
-        ...product.data(),
-      })));
-    });
-  }, [user]);
 
   useEffect(() => {
     if (!user) return;
     if (!productId) return;
     getDoc(doc(db, "users", user.uid, "products", productId)).then((snap) => {
-      if (!snap.exists()) return;
+      if (!snap.exists()) throw new Error("Produto não encontrado");
       const inputs = snap.data().inputs;
       if (inputs) {
         setForm((current) => ({
@@ -383,7 +371,8 @@ export default function Calculadora() {
       }
       setEditMode(true);
       setEditId(productId);
-    });
+    }).catch(() => setProductError("Não foi possível abrir o produto. Recarregue a página."))
+      .finally(() => setProductLoading(false));
   }, [user, productId]);
 
   const taxRegime = companyData?.taxRegime || "unknown";
@@ -392,21 +381,21 @@ export default function Calculadora() {
     () =>
       getPortfolioAllocationContext({
         products: portfolioProducts,
-        currentProductId: productId,
+        currentProductId: editId || productId,
         currentVolume: form.volumeEstimado,
       }),
-    [portfolioProducts, productId, form.volumeEstimado]
+    [portfolioProducts, productId, editId, form.volumeEstimado]
   );
 
   const fixedCostsTotal = useMemo(() => getFixedCostsTotal(companyData), [companyData]);
   const financialCoreInput = useMemo(
     () =>
       buildFinancialCoreInput({
-        form,
+        form: form.recipe?.items?.length ? {...form, insumos: recipeCost(form.recipe, ingredients)} : form,
         company: companyData,
         volumeTotalMensalParaRateio: allocationContext.volumeTotalMensalParaRateio,
       }),
-    [form, companyData, allocationContext.volumeTotalMensalParaRateio]
+    [form, companyData, ingredients, allocationContext.volumeTotalMensalParaRateio]
   );
   const financialResult = useMemo(
     () => calculateFinancialCore(financialCoreInput),
@@ -455,27 +444,30 @@ export default function Calculadora() {
     : null;
 
   async function handleSave() {
-    if (!financialResult.valid || !resultPayload) return;
+    if (loading || productLoading || productError || (error && !portfolioProducts.length) || !financialResult.valid || !resultPayload) return;
     setSaving(true);
     try {
       if (editMode) {
         await updateDoc(doc(db, "users", user.uid, "products", editId), {
           name: form.productName.trim() || "Produto sem nome",
-          inputs: buildProductInputsPayload(form),
+          inputs: buildProductInputsPayload({...form, insumos: financialCoreInput.cmv - num(form.embalagem) - num(form.freteEntrada)}),
           results: resultPayload,
         });
       } else {
-        await addDoc(collection(db, "users", user.uid, "products"), {
+        const created = await addDoc(collection(db, "users", user.uid, "products"), {
           name: form.productName.trim() || "Produto sem nome",
-          inputs: buildProductInputsPayload(form),
+          inputs: buildProductInputsPayload({...form, insumos: financialCoreInput.cmv - num(form.embalagem) - num(form.freteEntrada)}),
           results: resultPayload,
           createdAt: serverTimestamp(),
         });
+        setEditMode(true);
+        setEditId(created.id);
       }
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
       console.error(err);
+      window.alert("Não foi possível salvar. Confira a conexão e tente novamente.");
     } finally {
       setSaving(false);
     }
@@ -520,6 +512,8 @@ export default function Calculadora() {
     },
   ];
 
+  if (loading || productLoading) return <p className="p-8 text-slate-300">Carregando dados...</p>;
+  if (productError || (error && !portfolioProducts.length)) return <p role="alert" className="p-8 text-red-400">{productError || error}<button onClick={() => window.location.reload()}>Tentar novamente</button></p>;
   return (
     <div className="min-h-screen bg-[#0A0F1A] p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
@@ -659,7 +653,7 @@ export default function Calculadora() {
             {/* Botão salvar */}
             <button
               onClick={handleSave}
-              disabled={saving || !financialResult.valid}
+              disabled={saving || loading || productLoading || Boolean(productError) || !financialResult.valid}
               className="w-full bg-[#10B981] hover:bg-[#059669] disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-xl transition-all duration-150 flex items-center justify-center gap-2"
             >
               <Save size={16} />
@@ -687,7 +681,7 @@ export default function Calculadora() {
 
             <Section title="CMV — Custo da Mercadoria Vendida">
               <Field label="Insumos / Ingredientes">
-                <RInput prefix="R$" value={form.insumos} onChange={(v) => setF("insumos", v)} />
+                <RInput prefix="R$" value={form.recipe?.items?.length ? recipeCost(form.recipe, ingredients) : form.insumos} onChange={(v) => setF("insumos", v)} />
               </Field>
               <button
                 type="button"
@@ -812,8 +806,10 @@ export default function Calculadora() {
           productName={form.productName}
           user={user}
           onClose={() => setShowFichaTecnica(false)}
-          onApply={(cmvPerUnit) => {
-            setF("insumos", cmvPerUnit.toFixed(4));
+          recipe={form.recipe ? {...form.recipe, items: form.recipe.items.map(item => ({...item, costPerBaseUnit: ingredients.find(i => i.id === item.ingredientId && i.baseUnit === item.baseUnit)?.costPerBaseUnit ?? item.costPerBaseUnit}))} : null}
+          onApply={(cmvPerUnit, recipe) => {
+
+            setForm(f => ({...f, insumos: String(cmvPerUnit), recipe}));
             setShowFichaTecnica(false);
           }}
         />

@@ -1,55 +1,41 @@
 rules_version = '2';
 service cloud.firestore {
-  match /databases/{database}/documents {
-
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    function isAdmin() {
-      return isAuthenticated() &&
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
-    }
-
-    // Dados do usuário — só o próprio dono acessa
-    match /users/{userId} {
-      allow read, write: if isOwner(userId);
-
-      match /products/{productId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      match /dre/{dreId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      match /simulations/{simulationId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      match /reports/{reportId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      match /ingredients/{ingredientId} {
-        allow read, write: if isOwner(userId);
-      }
-    }
-
-    // Academia — qualquer usuário logado lê, só admin escreve
-    match /academy/{contentId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
-    }
-
-    // Admins — leitura autenticada, escrita só pelo console
-    match /admins/{userId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-    }
+ match /databases/{database}/documents {
+  function signedIn(){return request.auth != null;}
+  function owner(uid){return signedIn() && request.auth.uid == uid;}
+  function notDeleting(uid){return !exists(/databases/$(database)/documents/accounts/$(uid)) || get(/databases/$(database)/documents/accounts/$(uid)).data.get('deleting',false) != true;}
+  function allowedPlan(uid){
+   return exists(/databases/$(database)/documents/accessPolicy/public) &&
+    (get(/databases/$(database)/documents/accessPolicy/public).data.requireSubscription == false ||
+     (exists(/databases/$(database)/documents/accounts/$(uid)) && get(/databases/$(database)/documents/accounts/$(uid)).data.get('active',false) == true && get(/databases/$(database)/documents/accounts/$(uid)).data.accessUntil > request.time));
   }
+  function writeAccess(uid){return owner(uid) && notDeleting(uid) && allowedPlan(uid);}
+  function shortText(value,max){return value is string && value.size() <= max;}
+  function numberInput(value){return (value is number && value >= 0 && value <= 1000000000) || (value is string && value.size() <= 20 && value.matches('^[0-9]*([.,][0-9]+)?$'));}
+  function money(value){return value is number && value >= 0 && value <= 1000000000;}
+  function costs(c){return c is map && c.keys().hasOnly(['rent','employees','accountant','energy','internet','other']) && money(c.get('rent',0)) && money(c.get('employees',0)) && money(c.get('accountant',0)) && money(c.get('energy',0)) && money(c.get('internet',0)) && money(c.get('other',0));}
+  function company(c){return c is map && c.keys().hasOnly(['name','productType','salesChannel','taxRegime','effectiveTaxRatePct','fixedCosts']) && shortText(c.name,160) && shortText(c.productType,80) && shortText(c.salesChannel,80) && c.taxRegime in ['mei','simples','presumido','real','unknown'] && (c.effectiveTaxRatePct == '' || (money(c.effectiveTaxRatePct) && c.effectiveTaxRatePct < 100)) && costs(c.fixedCosts);}
+  function recipe(r){return r == null || (r is map && r.keys().hasOnly(['yield','items']) && numberInput(r.yield) && r.items is list && r.items.size() <= 80);}
+  function inputs(i){return i is map && i.keys().hasOnly(['productName','insumos','embalagem','freteEntrada','taxaPlataforma','taxaGateway','freteSaida','cac','provisaoDevolucoes','volumeEstimado','effectiveTaxRatePctOverride','taxaImpostosOverride','margem','recipe']) && shortText(i.get('productName',''),160) && numberInput(i.get('insumos',0)) && numberInput(i.get('embalagem',0)) && numberInput(i.get('freteEntrada',0)) && numberInput(i.get('taxaPlataforma',0)) && numberInput(i.get('taxaGateway',0)) && numberInput(i.get('freteSaida',0)) && numberInput(i.get('cac',0)) && numberInput(i.get('provisaoDevolucoes',0)) && numberInput(i.get('volumeEstimado',0)) && numberInput(i.get('effectiveTaxRatePctOverride','')) && numberInput(i.get('taxaImpostosOverride','')) && numberInput(i.get('margem','')) && recipe(i.get('recipe',null));}
+  match /users/{uid}{
+   allow read: if owner(uid);
+   allow create,update: if writeAccess(uid) && request.resource.data.keys().hasOnly(['company','createdAt']) && company(request.resource.data.company) && request.resource.data.get('createdAt',request.time) is timestamp;
+   allow delete: if false; // Use the server endpoint for recursive deletion.
+   match /products/{id}{
+    allow read: if owner(uid);
+    allow create,update: if writeAccess(uid) && request.resource.data.keys().hasOnly(['name','inputs','results','createdAt']) && shortText(request.resource.data.name,160) && inputs(request.resource.data.inputs) && request.resource.data.results is map && request.resource.data.results.size() <= 60 && request.resource.data.get('createdAt',request.time) is timestamp;
+    allow delete: if writeAccess(uid);
+   }
+   match /ingredients/{id}{
+    allow read: if owner(uid);
+    allow create,update: if writeAccess(uid) && request.resource.data.keys().hasOnly(['name','purchaseUnit','purchaseQty','purchasePrice','unitsPerPackage','baseUnit','costPerBaseUnit','createdAt']) && shortText(request.resource.data.name,160) && request.resource.data.purchaseUnit in ['kg','g','L','ml','unidade','dúzia','pacote','caixa'] && money(request.resource.data.purchaseQty) && request.resource.data.purchaseQty > 0 && money(request.resource.data.purchasePrice) && (request.resource.data.unitsPerPackage == null || (money(request.resource.data.unitsPerPackage) && request.resource.data.unitsPerPackage > 0)) && request.resource.data.baseUnit in ['g','ml','unidade'] && money(request.resource.data.costPerBaseUnit) && request.resource.data.get('createdAt',request.time) is timestamp;
+    allow delete: if writeAccess(uid);
+   }
+   match /{collection}/{id}{allow read: if owner(uid) && collection in ['dre','simulations','reports'];}
+  }
+  match /accounts/{uid}{allow read: if owner(uid); allow write: if false; match /usage/{month}{allow read: if owner(uid);allow write:if false;}}
+  match /accessPolicy/public{allow read:if signedIn();allow write:if false;}
+  match /academy/{id}{allow read:if signedIn();allow write:if signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));}
+  match /admins/{uid}{allow read:if owner(uid);allow write:if false;}
+ }
 }

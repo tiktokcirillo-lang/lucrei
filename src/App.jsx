@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { useLocation, BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthProvider";
 import { useAuth } from "./contexts/AuthContext";
 import PrivateRoute from "./components/PrivateRoute";
@@ -10,6 +10,9 @@ function OnboardingGuard({ children }) {
   if (!user) return <Navigate to="/login" />;
   return children;
 }
+
+const Conta = lazy(() => import("./pages/Conta"));
+const Legal = lazy(() => import("./pages/Legal"));
 
 const Login = lazy(() => import("./pages/Login"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
@@ -39,17 +42,25 @@ function PrivateLayout() {
   );
 }
 
+function CalculatorRoute() {
+  const location = useLocation();
+  return <Calculadora key={location.search} />;
+}
+
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Suspense fallback={Fallback}>
           <Routes>
+            <Route path="/conta" element={<OnboardingGuard><Layout><Conta /></Layout></OnboardingGuard>} />
+            <Route path="/privacidade" element={<Legal kind="privacy" />} />
+            <Route path="/termos" element={<Legal kind="terms" />} />
             <Route path="/login" element={<Login />} />
             <Route path="/onboarding" element={<OnboardingGuard><Onboarding /></OnboardingGuard>} />
             <Route element={<PrivateLayout />}>
               <Route path="/" element={<Dashboard />} />
-              <Route path="/calculadora" element={<Calculadora />} />
+              <Route path="/calculadora" element={<CalculatorRoute />} />
               <Route path="/produtos" element={<Produtos />} />
               <Route path="/dre" element={<DRE />} />
               <Route path="/simulador" element={<Simulador />} />

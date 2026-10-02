@@ -1,0 +1,16 @@
+name: Disponibilidade
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 * * * *'
+permissions:
+  contents: read
+jobs:
+  health:
+    if: vars.MONITOR_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar serviço
+        env:
+          APP_URL: '${{ vars.APP_URL }}'
+        run: curl --fail --silent --show-error --max-time 30 "${APP_URL}/api/health"

@@ -1,8 +1,11 @@
-import { useState, useEffect } from "react";
-import { collection, getDocs } from "firebase/firestore";
+import { usePortfolio } from "../hooks/usePortfolio";
+import { useState } from "react";
+
 import { CheckCircle2, XCircle, Target } from "lucide-react";
-import { useAuth } from "../contexts/AuthContext";
-import { db } from "../lib/firebase";
+
+
+
+import { calculateBundle, calculateDiscount } from "../lib/business/portfolio";
 
 const TABS = ["Desconto", "Bundle", "Frete Grátis"];
 
@@ -72,18 +75,13 @@ function TabDesconto({ produtos }) {
   const r = produto?.results ?? {};
   const inp = produto?.inputs ?? {};
 
-  const taxRate = (r.taxRatePct ?? 0) / 100;
-  const taxaVariavelPct =
-    (n(inp.taxaPlataforma) + n(inp.taxaGateway) + n(inp.provisaoDevolucoes)) / 100;
-  const precoComDesconto = (r.precoSugerido ?? 0) * (1 - desconto / 100);
-  const novaMC = produto
-    ? precoComDesconto * (1 - taxRate - taxaVariavelPct) - (r.cmv ?? 0) - (r.custoVariavelR ?? 0)
-    : null;
-  const novaMargemPct =
-    produto && precoComDesconto > 0 ? (novaMC / precoComDesconto) * 100 : null;
+  const discounted = produto ? calculateDiscount(produto, desconto) : null;
+  const precoComDesconto = discounted?.precoVendaAvaliado;
+  const novaMC = discounted?.margemContribuicaoUnit ?? null;
+  const novaMargemPct = discounted?.margemOperacionalEstimadaPct ?? null;
   const vol = n(inp.volumeEstimado);
-  const lucroOriginal = (r.margemContribuicao ?? 0) * vol;
-  const novoLucro = novaMC != null ? novaMC * vol : null;
+  const lucroOriginal = ((r.margemContribuicao ?? 0) - (r.custoFixoUnidade ?? 0)) * vol;
+  const novoLucro = novaMC != null ? (novaMC - (r.custoFixoUnidade ?? 0)) * vol : null;
   const impacto = novoLucro != null ? novoLucro - lucroOriginal : null;
   const alerta = novaMargemPct != null && novaMargemPct < 10;
 
@@ -192,9 +190,9 @@ function TabDesconto({ produtos }) {
               />
               {vol > 0 && (
                 <>
-                  <ResultRow label="Lucro mensal original" value={currency(lucroOriginal)} />
+                  <ResultRow label="Resultado mensal original" value={currency(lucroOriginal)} />
                   <ResultRow
-                    label="Novo lucro mensal"
+                    label="Novo resultado mensal"
                     value={currency(novoLucro)}
                     warn={novoLucro != null && novoLucro < 0}
                   />
@@ -239,14 +237,10 @@ function TabBundle({ produtos }) {
     .filter(Boolean);
 
   const bundleCMV = produtosBundle.reduce((a, p) => a + (p.results?.cmv ?? 0), 0);
-  const bundleCTU = produtosBundle.reduce((a, p) => a + (p.results?.ctu ?? 0), 0);
-  const bundleVariavel = produtosBundle.reduce(
-    (a, p) => a + (p.results?.cmv ?? 0) + (p.results?.custoVariavelR ?? 0),
-    0
-  );
   const preco = n(precoBundle);
-  const bundleMargemPct = preco > 0 ? ((preco - bundleCTU) / preco) * 100 : null;
-  const bundleMC = preco > 0 ? preco - bundleVariavel : null;
+  const bundle = calculateBundle(produtosBundle, preco);
+  const bundleMargemPct = bundle.margin;
+  const bundleMC = preco > 0 ? bundle.contribution : null;
   const precosSeparados = produtosBundle.reduce(
     (a, p) => a + (p.results?.precoSugerido ?? 0),
     0
@@ -434,7 +428,7 @@ function TabFreteGratis({ produtos }) {
                 value={unidadesExtras != null ? `${unidadesExtras} un` : "—"}
               />
               <ResultRow
-                label="Lucro extra gerado"
+                label="Contribuição extra gerada"
                 value={lucroExtra != null ? currency(lucroExtra) : "—"}
                 highlight={lucroExtra != null && lucroExtra > 0}
               />
@@ -461,7 +455,7 @@ function TabFreteGratis({ produtos }) {
                         cobreaFrete ? "text-[#10B981]" : "text-[#EF4444]"
                       }`}
                     >
-                      {cobreaFrete ? "Frete coberto pelo lucro" : "Lucro não cobre o frete"}
+                      {cobreaFrete ? "Frete coberto pela contribuição extra" : "Contribuição extra não cobre o frete"}
                     </p>
                     <p
                       className={`text-xs mt-0.5 ${
@@ -486,19 +480,14 @@ function TabFreteGratis({ produtos }) {
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 export default function Simulador() {
-  const { user } = useAuth();
+
   const [tab, setTab] = useState(0);
-  const [produtos, setProdutos] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { produtos, loading, error } = usePortfolio();
 
-  useEffect(() => {
-    if (!user) return;
-    getDocs(collection(db, "users", user.uid, "products")).then((snap) => {
-      setProdutos(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      setLoading(false);
-    });
-  }, [user]);
 
+
+
+  if (error) return <div role="alert" className="p-8 text-red-400">{error} <a className="underline" href="/produtos">Ver produtos</a><button className="ml-4 underline" onClick={() => window.location.reload()}>Tentar novamente</button></div>;
   return (
     <div className="bg-[#060A12] p-4 md:p-8 min-h-screen">
       <div className="max-w-4xl mx-auto">
@@ -506,7 +495,7 @@ export default function Simulador() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-[#F1F5F9]">Simulador de Promoções</h1>
-          <p className="text-[#64748B] text-sm mt-1">Teste cenários antes de tomar decisões</p>
+          <p className="text-[#64748B] text-sm mt-1">Projeções com preços sugeridos. Nos combos, impostos e taxas são ponderados pelos preços individuais.</p>
         </div>
 
         {/* Tabs — pill style igual aos filtros de Produtos */}

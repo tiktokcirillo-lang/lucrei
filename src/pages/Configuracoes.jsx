@@ -54,6 +54,8 @@ function Field({ label, children }) {
 
 export default function Configuracoes() {
   const { user, logout } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(false);
   const [form, setForm] = useState({
@@ -75,7 +77,7 @@ export default function Configuracoes() {
   useEffect(() => {
     if (!user) return;
     getDoc(doc(db, "users", user.uid)).then((snap) => {
-      if (!snap.exists()) return;
+      if (!snap.exists()) throw new Error("Cadastro não encontrado");
       const data = snap.data();
       const c = data.company || {};
       setForm({
@@ -93,7 +95,7 @@ export default function Configuracoes() {
           other: c.fixedCosts?.other ?? "",
         },
       });
-    });
+    }).catch(() => setLoadError(true)).finally(() => setLoading(false));
   }, [user]);
 
   function setField(key, value) {
@@ -105,12 +107,14 @@ export default function Configuracoes() {
   }
 
   async function handleSave() {
+    if (loading || loadError) return;
     setSaving(true);
     try {
       const costs = {};
       for (const { key } of FIXED_COST_FIELDS) {
         costs[key] = parseFloat(form.fixedCosts[key]) || 0;
       }
+      if (Object.values(form.fixedCosts).some(v => v !== "" && (!Number.isFinite(Number(v)) || Number(v) < 0)) || (form.effectiveTaxRatePct !== "" && (!Number.isFinite(Number(form.effectiveTaxRatePct)) || Number(form.effectiveTaxRatePct) < 0 || Number(form.effectiveTaxRatePct) >= 100))) throw new Error("Valores inválidos");
       const effectiveTaxRatePct =
         form.effectiveTaxRatePct === "" ? "" : parseFloat(form.effectiveTaxRatePct);
       await updateDoc(doc(db, "users", user.uid), {
@@ -125,6 +129,7 @@ export default function Configuracoes() {
       setTimeout(() => setToast(false), 3000);
     } catch (err) {
       console.error(err);
+      window.alert("Não foi possível salvar. Confira a conexão e tente novamente.");
     } finally {
       setSaving(false);
     }
@@ -135,6 +140,8 @@ export default function Configuracoes() {
   const selectCls =
     "w-full bg-[#0A0D14] border border-[#1E293B] text-[#F1F5F9] rounded-lg px-4 py-2.5 outline-none focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981] text-sm transition-all duration-150";
 
+  if (loading) return <p className="p-8 text-slate-300">Carregando configurações...</p>;
+  if (loadError) return <p role="alert" className="p-8 text-red-400">Não foi possível carregar as configurações. <button onClick={() => window.location.reload()}>Tentar novamente</button></p>;
   return (
     <div className="bg-[#060A12] min-h-screen p-4 md:p-8">
       <div className="max-w-xl mx-auto flex flex-col gap-6">
@@ -240,6 +247,7 @@ export default function Configuracoes() {
 
         {/* Seção 3 — Dados da Conta */}
         <Section title="Dados da Conta">
+          <a className="text-emerald-400 underline" href="/conta">Assinatura, exportação e exclusão da conta</a>
           <Field label="E-mail">
             <input
               type="text"

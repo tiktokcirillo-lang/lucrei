@@ -99,7 +99,7 @@ export default function Login() {
             </p>
 
             <button
-              onClick={loginWithGoogle}
+              onClick={() => loginWithGoogle().catch(() => window.alert("Não foi possível entrar. Permita o popup e tente novamente."))}
               className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl text-sm font-semibold text-slate-200 transition-all duration-150"
               style={{
                 background: "#0F1623",
@@ -119,7 +119,7 @@ export default function Login() {
             </button>
 
             <p className="text-center text-slate-600 text-xs mt-6">
-              Gratuito para sempre&nbsp;•&nbsp;Seus dados protegidos
+              <a href="/termos" className="underline">Termos de uso</a> · <a href="/privacidade" className="underline">Privacidade</a>
             </p>
           </div>
         </div>
