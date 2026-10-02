@@ -11,8 +11,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       workbox: {
         // Não deixar o service worker servir index.html nas rotas do handler
-        // de autenticação do Firebase (reverse proxy para firebaseapp.com).
-        navigateFallbackDenylist: [/^\/__/],
+        // de autenticação do Firebase nem nas funções server-side da Vercel.
+        navigateFallbackDenylist: [/^\/__/, /^\/api(?:\/|$)/],
       },
       includeAssets: ['favicon.svg', 'icons/icon-192.png', 'icons/icon-512.png'],
       manifest: {
