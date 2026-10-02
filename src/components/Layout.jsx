@@ -150,7 +150,7 @@ export default function Layout({ children }) {
       </aside>
 
       {/* Main */}
-      <main className="flex-1 lg:ml-[240px] pb-16 lg:pb-0">{children}</main>
+      <main className="flex-1 min-w-0 lg:ml-[240px] pb-16 lg:pb-0">{children}</main>
 
       {/* Bottom nav — mobile */}
       <nav

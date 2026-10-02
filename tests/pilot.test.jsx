@@ -56,9 +56,10 @@ describe('Fluxos do piloto com serviços simulados',()=>{
   expect(screen.getByRole('button',{name:/Salvar|Atualizar Produto/i}).disabled).toBe(false);
  });
  it('mostra todas as áreas no menu mobile',()=>{
-  mount(Layout);
+  const {container}=mount(Layout);
   const nav=screen.getAllByRole('navigation')[1];
   for(const name of ['Ingredientes','Simulador','Relatórios','Academia']) expect([...nav.querySelectorAll('a')].some(a=>a.textContent===name)).toBe(true);
+  expect(container.querySelector('main').className).toContain('min-w-0');
  });
  it('DRE não oferece períodos fictícios e identifica projeção',()=>{
   mount(DRE);expect(screen.queryByRole('combobox')).toBeNull();
